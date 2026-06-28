@@ -1,203 +1,205 @@
 # Medical-Incident-NLP
 
-> 以大型語言模型（LLM）對**醫療異常事件報告**進行自動化分析的研究專案。
+> A research project that uses Large Language Models (LLMs) to automatically analyze **medical incident reports**.
 
-本專案針對醫院通報的醫療異常事件文本，建立一條完整的資料處理與模型微調（fine-tuning）流程，並同時訓練兩個 OpenAI 模型來完成兩項任務：
+This project builds an end-to-end data-processing and fine-tuning pipeline for hospital-reported medical incident texts, and fine-tunes two OpenAI models to perform two tasks:
 
-| 任務 | 說明 | 標籤 |
+| Task | Description | Labels |
 | --- | --- | --- |
-| **IDT 歸因分類** | 依據 IDT（Incident Decision Tree，事件決策樹）邏輯，判斷事件根因屬於「個人」或「系統」 | `個人` / `系統` |
-| **撰寫者情緒分析** | 推斷事件報告「撰寫者」於書寫當下的情緒 | 中性、焦慮、自責、無奈、擔憂、沮喪、憤怒、驚慌、困惑、警覺 |
+| **IDT Root-Cause Classification** | Following the IDT (Incident Decision Tree) logic, decide whether the root cause of an incident is "personal" or "system". | `個人` (Personal) / `系統` (System) |
+| **Writer Emotion Analysis** | Infer the emotion of the report's **author** at the moment of writing. | Neutral, Anxious, Self-blame, Helpless, Worried, Frustrated, Angry, Panicked, Confused, Alert |
+
+> Note: the source texts and model labels are in Traditional Chinese; English terms above are provided as glosses.
 
 ---
 
-## 目錄
+## Table of Contents
 
-- [專案特色](#專案特色)
-- [系統流程](#系統流程)
-- [專案結構](#專案結構)
-- [環境需求與安裝](#環境需求與安裝)
-- [環境變數設定](#環境變數設定)
-- [使用方式](#使用方式)
-- [資料格式](#資料格式)
-- [模型與評估結果](#模型與評估結果)
-- [設計說明與注意事項](#設計說明與注意事項)
-
----
-
-## 專案特色
-
-- **端到端流程**：從原始 Excel 通報資料，到資料清洗、增強、特徵標注、模型微調與推論評估，全程腳本化。
-- **雙任務微調**：以 `gpt-4o-mini-2024-07-18` 為基礎模型，分別微調 IDT 與情緒兩個專用分類模型。
-- **IDT 決策樹提示工程**：將完整的 IDT 五階段決策邏輯（刻意傷害 → 能力 → 外部 → 情境 → 補救檢視）寫入 system prompt，引導模型依臨床風險管理框架推理。
-- **LLM 資料增強**：透過語意改寫（paraphrase）擴充訓練樣本，提升資料多樣性。
+- [Features](#features)
+- [Pipeline](#pipeline)
+- [Project Structure](#project-structure)
+- [Requirements & Installation](#requirements--installation)
+- [Environment Variables](#environment-variables)
+- [Usage](#usage)
+- [Data Format](#data-format)
+- [Models & Evaluation](#models--evaluation)
+- [Design Notes & Caveats](#design-notes--caveats)
 
 ---
 
-## 系統流程
+## Features
 
-專案分為**訓練（train）**與**推論（inference）**兩條流程，皆由 [run.py](run.py) 統一進入。
+- **End-to-end pipeline**: from raw Excel incident reports through data cleaning, augmentation, feature annotation, model fine-tuning, and inference evaluation — all scripted.
+- **Two fine-tuned models**: built on `gpt-4o-mini-2024-07-18` as the base model, with separate fine-tuned classifiers for IDT and emotion.
+- **IDT decision-tree prompting**: the full five-stage IDT logic (deliberate harm → capability → external → contextual → remedial review) is encoded in the system prompt to guide the model along a clinical risk-management framework.
+- **LLM-based data augmentation**: semantic paraphrasing expands the training set and increases data diversity.
+
+---
+
+## Pipeline
+
+The project has two flows — **train** and **inference** — both launched through [run.py](run.py).
 
 ```mermaid
 flowchart TD
-    subgraph 訓練流程 train
-        A1[原始 Excel<br/>112.01~112.12] --> A2[資料前處理<br/>data_preprocessing]
-        A2 --> A3[資料增強<br/>data_augmentation]
-        A3 --> A4[特徵工程：情緒標注<br/>feature_engineering]
-        A4 --> A5[模型微調<br/>trainer]
+    subgraph Train
+        A1[Raw Excel<br/>112.01~112.12] --> A2[Preprocessing<br/>data_preprocessing]
+        A2 --> A3[Augmentation<br/>data_augmentation]
+        A3 --> A4[Feature Eng.: emotion annotation<br/>feature_engineering]
+        A4 --> A5[Fine-tuning<br/>trainer]
         A5 --> A6[(models/idt_model.txt<br/>models/emotion_model.txt)]
     end
 
-    subgraph 推論流程 inference
-        B1[原始 Excel<br/>113.01~113.02] --> B2[資料前處理<br/>data_preprocessing]
-        B2 --> B3[特徵工程：情緒標注<br/>feature_engineering]
-        B3 --> B4[模型推論與評估<br/>inference]
-        A6 -.讀取 model id.-> B4
+    subgraph Inference
+        B1[Raw Excel<br/>113.01~113.02] --> B2[Preprocessing<br/>data_preprocessing]
+        B2 --> B3[Feature Eng.: emotion annotation<br/>feature_engineering]
+        B3 --> B4[Inference & evaluation<br/>inference]
+        A6 -.read model id.-> B4
         B4 --> B5[(results/inference_predictions.json<br/>results/inference_evaluation.json)]
     end
 ```
 
-| 階段 | 模組 | 功能 |
+| Stage | Module | Function |
 | --- | --- | --- |
-| 1. 前處理 | [src/data_preprocessing.py](src/data_preprocessing.py) | 讀取並合併 Excel 各月份工作表、欄位重命名、僅保留合法 `idt_target`（個人／系統），輸出 JSON |
-| 2. 資料增強 | [src/data_augmentation.py](src/data_augmentation.py) | 用 LLM 對事件描述進行語意改寫，擴充訓練資料（僅訓練集） |
-| 3. 特徵工程 | [src/feature_engineering.py](src/feature_engineering.py) | 用 LLM 標注每筆描述的「撰寫者情緒」並填入 `emotion_target` |
-| 4. 模型訓練 | [src/trainer.py](src/trainer.py) | 將資料轉為 OpenAI fine-tuning 格式並建立微調任務，模型 id 寫入 `models/` |
-| 5. 推論評估 | [src/inference.py](src/inference.py) | 用微調模型對測試集預測 IDT 與情緒，計算 accuracy 並輸出結果 |
+| 1. Preprocessing | [src/data_preprocessing.py](src/data_preprocessing.py) | Load and merge Excel monthly sheets, rename columns, keep only valid `idt_target` (Personal/System), export JSON |
+| 2. Augmentation | [src/data_augmentation.py](src/data_augmentation.py) | Use an LLM to paraphrase incident descriptions, expanding the training set (training set only) |
+| 3. Feature Engineering | [src/feature_engineering.py](src/feature_engineering.py) | Use an LLM to annotate the "writer emotion" of each description into `emotion_target` |
+| 4. Training | [src/trainer.py](src/trainer.py) | Convert data to the OpenAI fine-tuning format and launch fine-tuning jobs; model ids are written to `models/` |
+| 5. Inference | [src/inference.py](src/inference.py) | Predict IDT and emotion on the test set with the fine-tuned models, compute accuracy, and export results |
 
 ---
 
-## 專案結構
+## Project Structure
 
 ```text
 Medical-Incident-NLP/
-├── run.py                      # 流程進入點（train / inference）
+├── run.py                      # Entry point (train / inference)
 ├── src/
-│   ├── data_preprocessing.py   # 1. Excel → 清洗 → JSON
-│   ├── data_augmentation.py    # 2. LLM 語意改寫增強
-│   ├── feature_engineering.py  # 3. LLM 情緒標注
-│   ├── trainer.py              # 4. 微調 IDT / 情緒模型（含 IDT 決策樹提示）
-│   └── inference.py            # 5. 推論與評估
-├── models/                     # 微調後的 model id（純文字）
+│   ├── data_preprocessing.py   # 1. Excel → cleaning → JSON
+│   ├── data_augmentation.py    # 2. LLM semantic paraphrasing
+│   ├── feature_engineering.py  # 3. LLM emotion annotation
+│   ├── trainer.py              # 4. Fine-tune IDT / emotion models (with IDT decision-tree prompt)
+│   └── inference.py            # 5. Inference & evaluation
+├── models/                     # Fine-tuned model ids (plain text)
 │   ├── idt_model.txt
 │   └── emotion_model.txt
-├── results/                    # 推論輸出
+├── results/                    # Inference outputs
 │   ├── inference_predictions.json
 │   └── inference_evaluation.json
-├── data/                       # 資料目錄（已加入 .gitignore，不納入版控）
-│   ├── raw_data/               # 原始 Excel
-│   ├── processed_data/         # 前處理後 JSON
-│   └── interim/                # 增強 / 特徵 / 訓練中間檔
+├── data/                       # Data directory (git-ignored, not version-controlled)
+│   ├── raw_data/               # Raw Excel
+│   ├── processed_data/         # Preprocessed JSON
+│   └── interim/                # Augmented / feature / training intermediates
 ├── requirements.txt
-└── .env                        # OpenAI 金鑰（已加入 .gitignore，請勿提交）
+└── .env                        # OpenAI key (git-ignored, do not commit)
 ```
 
 ---
 
-## 環境需求與安裝
+## Requirements & Installation
 
 - Python 3.11+
-- 一組可用的 OpenAI API Key（需具備 fine-tuning 權限）
+- A valid OpenAI API key (with fine-tuning access)
 
 ```bash
-# 建議使用虛擬環境
+# A virtual environment is recommended
 python3 -m venv .venv
 source .venv/bin/activate
 
-# 安裝相依套件
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-相依套件：`pandas`、`openpyxl`、`openai`、`python-dotenv`。
+Dependencies: `pandas`, `openpyxl`, `openai`, `python-dotenv`.
 
 ---
 
-## 環境變數設定
+## Environment Variables
 
-在專案根目錄建立 `.env` 檔，填入你的 OpenAI 金鑰：
+Create a `.env` file in the project root and add your OpenAI key:
 
 ```dotenv
 OPENAI_API_KEY=sk-your-key-here
 ```
 
-> ⚠️ `.env` 已列入 `.gitignore`，**請勿將金鑰提交至版本庫**。
+> ⚠️ `.env` is listed in `.gitignore` — **never commit your key to the repository**.
 
 ---
 
-## 使用方式
+## Usage
 
-> 完整流程需要 `data/raw_data/` 內的原始 Excel 檔。`run.py` 中前處理、增強、特徵工程等步驟預設為註解狀態（中間檔已存在時可略過），實際執行時請依需求取消註解。
+> The full pipeline requires the raw Excel file under `data/raw_data/`. In `run.py`, the preprocessing, augmentation, and feature-engineering steps are commented out by default (they can be skipped when the intermediate files already exist); uncomment them as needed.
 
-### 訓練
+### Train
 
-執行前處理 → 資料增強 → 情緒標注 → 微調 IDT 與情緒兩個模型：
+Run preprocessing → augmentation → emotion annotation → fine-tune both the IDT and emotion models:
 
 ```bash
 python run.py train
 ```
 
-完成後，微調模型 id 會寫入 `models/idt_model.txt` 與 `models/emotion_model.txt`。
+When finished, the fine-tuned model ids are written to `models/idt_model.txt` and `models/emotion_model.txt`.
 
-### 推論與評估
+### Inference & Evaluation
 
-對測試集進行前處理 → 情緒標注 → 以微調模型預測並評估：
+Run preprocessing → emotion annotation → predict and evaluate with the fine-tuned models on the test set:
 
 ```bash
 python run.py inference
 ```
 
-結果輸出至：
+Outputs:
 
-- `results/inference_predictions.json`：每筆的預測結果（`idt_pred`、`emotion_pred`）
-- `results/inference_evaluation.json`：各任務的 accuracy 統計
+- `results/inference_predictions.json`: per-record predictions (`idt_pred`, `emotion_pred`)
+- `results/inference_evaluation.json`: per-task accuracy statistics
 
 ---
 
-## 資料格式
+## Data Format
 
-原始資料來自醫院通報 Excel（去識別化），以民國年月為工作表名稱：
+The raw data comes from de-identified hospital incident-report Excel files, with sheets named by year-month in the ROC (Minguo) calendar:
 
-- **訓練集**：`112.01` ~ `112.12`（民國 112 年全年）
-- **測試集**：`113.01` ~ `113.02`（民國 113 年 1–2 月）
+- **Training set**: `112.01` – `112.12` (ROC year 112, full year)
+- **Test set**: `113.01` – `113.02` (ROC year 113, Jan–Feb)
 
-前處理後每筆記錄的 JSON 結構如下：
+After preprocessing, each record has the following JSON structure:
 
 ```json
 {
   "idt_target": "系統",
   "emotion_target": "焦慮",
   "content": {
-    "description": "事件描述文字……",
-    "directive": "批示內容……"
+    "description": "incident description text…",
+    "directive": "supervisor directive…"
   }
 }
 ```
 
-| 欄位 | 來源 | 說明 |
+| Field | Source | Description |
 | --- | --- | --- |
-| `idt_target` | Excel 人工標註（`IDT分析`） | 任務一的真實標籤：`個人` / `系統` |
-| `emotion_target` | 模型標注（特徵工程階段） | 任務二的情緒標籤 |
-| `content.description` | Excel `事件描述` | 模型輸入的主要文本 |
-| `content.directive` | Excel `批示` | 主管批示，保留作為背景資訊 |
+| `idt_target` | Excel human annotation (`IDT分析`) | Ground-truth label for Task 1: `個人` (Personal) / `系統` (System) |
+| `emotion_target` | Model annotation (feature-engineering stage) | Emotion label for Task 2 |
+| `content.description` | Excel `事件描述` | Primary text fed to the model |
+| `content.directive` | Excel `批示` | Supervisor's directive, kept as background context |
 
 ---
 
-## 模型與評估結果
+## Models & Evaluation
 
-以微調模型對測試集（113.01–113.02，共 207 筆）進行評估：
+Evaluation of the fine-tuned models on the test set (113.01–113.02, 207 records):
 
-| 任務 | 基礎模型 | 測試樣本 | 正確數 | Accuracy |
+| Task | Base Model | Test Samples | Correct | Accuracy |
 | --- | --- | --- | --- | --- |
-| IDT 歸因分類 | `gpt-4o-mini-2024-07-18` | 207 | 191 | **92.27%** |
-| 撰寫者情緒分析 | `gpt-4o-mini-2024-07-18` | 207 | 146 | **70.53%** |
+| IDT Root-Cause Classification | `gpt-4o-mini-2024-07-18` | 207 | 191 | **92.27%** |
+| Writer Emotion Analysis | `gpt-4o-mini-2024-07-18` | 207 | 146 | **70.53%** |
 
-> 數據來源：[results/inference_evaluation.json](results/inference_evaluation.json)
+> Source: [results/inference_evaluation.json](results/inference_evaluation.json)
 
 ---
 
-## 設計說明與注意事項
+## Design Notes & Caveats
 
-- **IDT 標籤為人工標註**：`idt_target`（個人／系統）取自醫院通報 Excel 的人工判定，屬於真實的金標準（gold label）。
-- **情緒標籤由模型標注**：情緒資料並無人工標準答案；`emotion_target` 在訓練集與測試集皆以**相同的標注方式**（特徵工程階段的 LLM 標注）產生。因此情緒任務的 accuracy 反映的是微調模型與標注模型之間的一致性，此為刻意設計。
-- **API 成本**：資料增強、情緒標注、微調與推論皆會呼叫 OpenAI API，並產生對應費用，大量資料執行前請留意。
-- **資料隱私**：原始資料為去識別化之醫療通報內容，請依所屬機構之資料治理規範使用，切勿將含個資的原始檔案提交至版本庫。
+- **IDT labels are human-annotated**: `idt_target` (Personal/System) comes from the human judgment in the hospital's reporting Excel and serves as the gold label.
+- **Emotion labels are model-annotated**: there is no human ground truth for emotion; `emotion_target` is produced by the **same annotation method** (the LLM annotation in the feature-engineering stage) for both the training and test sets. The emotion task's accuracy therefore reflects the agreement between the fine-tuned model and the annotation model — this is by design.
+- **API cost**: augmentation, emotion annotation, fine-tuning, and inference all call the OpenAI API and incur cost; mind this before running on large datasets.
+- **Data privacy**: the raw data consists of de-identified medical incident reports. Use it in accordance with your institution's data-governance policies, and never commit files containing personal data to the repository.
