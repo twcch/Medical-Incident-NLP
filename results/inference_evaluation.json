@@ -1,0 +1,18 @@
+[
+  {
+    "task": "idt",
+    "model": "ft:gpt-4o-mini-2024-07-18:personal::DvQRQGHU",
+    "label_field": "idt_target",
+    "n": 207,
+    "n_correct": 191,
+    "accuracy": 0.9227053140096618
+  },
+  {
+    "task": "emotion",
+    "model": "ft:gpt-4o-mini-2024-07-18:personal::DvSnpxS6",
+    "label_field": "emotion_target",
+    "n": 207,
+    "n_correct": 146,
+    "accuracy": 0.7053140096618358
+  }
+]
