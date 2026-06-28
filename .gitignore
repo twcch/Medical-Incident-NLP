@@ -1,4 +1,5 @@
 _old/
 data/
+.env
 AGENTS.md
 CLAUDE.md
