@@ -1,125 +1,143 @@
+"""使用 Gemma 標註事件描述的撰寫者情緒；此標註不是人工真實標籤。"""
+
 import json
-import os
+from pathlib import Path
+from typing import Callable
 
-from dotenv import load_dotenv
-from openai import OpenAI
+if __package__:
+    from .config import RuntimeConfig
+    from .llm import ModelSession, parse_json_object
+    from .prompts import EMOTION_LABELS, EMOTION_SYSTEM_PROMPT
+else:
+    from config import RuntimeConfig
+    from llm import ModelSession, parse_json_object
+    from prompts import EMOTION_LABELS, EMOTION_SYSTEM_PROMPT
 
-
-load_dotenv()
-
-TEXT_FIELD = "description"        # content 內作為分析來源的事件描述欄位
-EMOTION_FIELD = "emotion_target"  # 標注結果寫入的「撰寫者情緒」欄位（預處理預留的空槽）
-
-EMOTION_LABELS = [
-    "中性", "焦慮", "自責", "無奈", "擔憂", "沮喪", "憤怒", "驚慌", "困惑", "警覺"
-]
-
-_client = None
+TEXT_FIELD = "description"
+EMOTION_FIELD = "emotion_target"  # 保留既有資料欄位，內容為 Gemma 產生的標註
 
 
-def get_client() -> OpenAI:
-    """
-    Lazily build the OpenAI client so that importing this module does not
-    require an API key (the key is only needed when actually calling the API).
-    """
-    global _client
-    if _client is None:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY 未設定，請在 .env 設定後再執行。")
-        _client = OpenAI(api_key=api_key)
-    return _client
+def description_text(record: dict, index: int | None = None) -> str:
+    """拒絕空白或非文字輸入，避免以中性掩蓋資料或模型錯誤。"""
+    location = f"第 {index} 筆" if index is not None else "資料"
+    if not isinstance(record, dict) or not isinstance(record.get("content"), dict):
+        raise ValueError(f"{location} 必須包含 content 物件。")
+    text = record["content"].get(TEXT_FIELD)
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError(f"{location} 的 content.description 必須是非空白文字。")
+    return text.strip()
 
 
-def annotate_emotion(text: str, max_retries: int = 2) -> str:
-    prompt = f"""
-        # Task
-            你將會閱讀一段由醫療人員撰寫的醫療事件描述，請判斷該描述「撰寫者」在書寫當下最可能的情緒，並從 # Constraint 的情緒清單中挑選一個最貼切的標籤。
+def parse_label_response(raw: str, field: str, valid_labels) -> str:
+    """只接受合法單一標籤，或僅含指定欄位的 JSON 物件。"""
+    if not isinstance(raw, str):
+        raise ValueError("模型標籤輸出必須是文字。")
+    cleaned = raw.strip()
+    if cleaned in valid_labels:
+        return cleaned
+    result = parse_json_object(cleaned)
+    if set(result) != {field}:
+        raise ValueError(f"模型必須只回傳 {field} 欄位。")
+    label = result[field]
+    if not isinstance(label, str) or label not in valid_labels:
+        raise ValueError(f"模型輸出無效的 {field} 標籤。")
+    return label
 
-        # Role
-            你是一位具有臨床心理背景的醫療文本情緒分析專家，擅長從醫療事件報告的用詞、語氣與描述方式推斷撰寫者當下的情緒狀態。
 
-        # Interaction
-            N/A
-
-        # Parameter
-            text: 待分析的醫療事件描述文本。
-
-        # Constraint
-            1. 必須只回傳一個情緒標籤，且必須是以下其中之一：{EMOTION_LABELS}
-            2. 判斷依據是「撰寫者」當下的情緒，不是病人或當事人的情緒。
-            3. 若文字平鋪直敘、無明顯情緒色彩，請使用「中性」。
-            4. 嚴格依照 # Output 的 JSON 格式輸出，不要附加任何其他文字。
-
-        # Output
-            {{"emotion": "情緒標籤"}}
-
-        # Input
-            text: {text}
-    """
-
-    client = get_client()
+def annotate_emotion(
+    text: str,
+    max_retries: int = 2,
+    *,
+    generator: Callable | None = None,
+    model_name: str | None = None,
+    config: RuntimeConfig | None = None,
+) -> str:
+    """重試格式錯誤的輸出；仍失敗時中止，不替換為中性。"""
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("情緒標註的輸入必須是非空白文字。")
+    if isinstance(max_retries, bool) or not isinstance(max_retries, int) or max_retries < 0:
+        raise ValueError("max_retries 必須是非負整數。")
+    config = config or RuntimeConfig()
+    model_name = model_name or config.gemma_model
+    if generator is None:
+        with ModelSession(model_name, config) as session:
+            return annotate_emotion(
+                text,
+                max_retries,
+                generator=session.generate,
+                model_name=model_name,
+                config=config,
+            )
+    last_error = None
     for _ in range(max_retries + 1):
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.0,
+        try:
+            raw = generator(
+                EMOTION_SYSTEM_PROMPT,
+                text.strip(),
+                temperature=0.0,
+                max_new_tokens=config.max_new_tokens,
+            )
+            return parse_label_response(raw, "emotion", EMOTION_LABELS)
+        except (ValueError, TypeError) as exc:
+            last_error = exc
+    raise RuntimeError(
+        f"{model_name} 情緒標註在 {max_retries + 1} 次嘗試後仍未產生合法標籤。"
+    ) from last_error
+
+
+def add_emotion_feature(
+    records: list,
+    *,
+    generator: Callable | None = None,
+    model_name: str | None = None,
+    config: RuntimeConfig | None = None,
+) -> list:
+    """逐筆回填模型情緒標註，並留下模型來源，供後續 Qwen 評分。"""
+    if not isinstance(records, list):
+        raise ValueError("資料 JSON 最外層必須是陣列。")
+    texts = [description_text(record, index) for index, record in enumerate(records, 1)]
+    config = config or RuntimeConfig()
+    model_name = model_name or config.gemma_model
+    if generator is None and records:
+        with ModelSession(model_name, config) as session:
+            return add_emotion_feature(
+                records, generator=session.generate, model_name=model_name, config=config
+            )
+    for index, (record, text) in enumerate(zip(records, texts), 1):
+        emotion = annotate_emotion(
+            text, generator=generator, model_name=model_name, config=config
         )
-        result = json.loads(response.choices[0].message.content)
-        emotion = str(result.get("emotion", "")).strip()
-        if emotion in EMOTION_LABELS:
-            return emotion
-
-    return "中性"
-
-
-def add_emotion_feature(records: list) -> list:
-    """
-    Fill each record's emotion_target with the model-annotated emotion,
-    inferred from content.description.
-
-    Parameters:
-    - records: list of dicts shaped like
-      {"idt_target": ..., "emotion_target": "", "content": {"description": ..., "directive": ...}}.
-
-    Returns:
-    - The same list with EMOTION_FIELD (emotion_target) filled in.
-    """
-    total = len(records)
-    for i, record in enumerate(records, start=1):
-        text = str(record["content"].get(TEXT_FIELD) or "").strip()
-        emotion = annotate_emotion(text) if text else "中性"
         record[EMOTION_FIELD] = emotion
-        print(f"[{i}/{total}] {emotion}")
+        record["emotion_annotation_model"] = model_name
+        record["emotion_annotation_source"] = "llm_generated"
+        record["emotion_annotation_is_gold"] = False
+        print(f"[情緒標註 {index}/{len(records)}] {emotion}")
     return records
 
 
-def load_json(path: str) -> list:
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+def load_json(path: str | Path) -> list:
+    records = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(records, list):
+        raise ValueError("資料 JSON 最外層必須是陣列。")
+    return records
 
 
-def save_json(records: list, path: str) -> None:
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(records, f, ensure_ascii=False, indent=2)
+def save_json(records, path: str | Path) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def run(in_path: str, out_path: str) -> list:
-    """Add emotion features to one dataset."""
-    print(f"=== {in_path} ===")
-    records = load_json(in_path)
-    records = add_emotion_feature(records)
+def run(in_path: str, out_path: str, *, config: RuntimeConfig | None = None) -> list:
+    """標註訓練資料；情緒欄位不會作為情緒 fine-tuning 的目標。"""
+    records = add_emotion_feature(load_json(in_path), config=config)
     save_json(records, out_path)
     print(f"已輸出 {out_path}（{len(records)} 筆）")
     return records
 
 
 def main():
-    # train 讀「增強後」的檔；test 維持原始（不增強）
     run("data/interim/train_augmented.json", "data/interim/train_features.json")
-    run("data/processed_data/test_data.json", "data/interim/test_features.json")
 
 
 if __name__ == "__main__":

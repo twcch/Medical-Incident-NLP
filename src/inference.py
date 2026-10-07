@@ -1,147 +1,137 @@
-import json
-import os
+"""Gemma IDT LoRA 推論、Gemma 情緒標註，以及獨立的 Qwen 情緒評分。"""
+
 from pathlib import Path
+from typing import Callable
 
-from dotenv import load_dotenv
-from openai import OpenAI
-
-try:  # 透過 run.py (`from src import ...`) 匯入時
-    from src.trainer import IDT_SYSTEM_PROMPT, EMOTION_SYSTEM_PROMPT
-except ImportError:  # 直接 `python3 src/inference.py` 執行時
-    from trainer import IDT_SYSTEM_PROMPT, EMOTION_SYSTEM_PROMPT
-
-load_dotenv()
-
-TEXT_FIELD = "description"        # content 內作為輸入的事件描述
-IDT_TARGET = "idt_target"         # 真實標籤（個人/系統）
-EMOTION_TARGET = "emotion_target"  # 情緒標籤（模型標注）
-
-_client = None
-
-
-def get_client() -> OpenAI:
-    """Lazily build the OpenAI client (key only needed when actually calling the API)."""
-    global _client
-    if _client is None:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY 未設定，請在 .env 設定後再執行。")
-        _client = OpenAI(api_key=api_key)
-    return _client
-
-
-def read_model_id(path: str) -> str:
-    """讀取 models/*.txt 內存的 fine-tuned model id。"""
-    return Path(path).read_text(encoding="utf-8").strip()
-
-
-def predict_single(text, model_name, system_prompt, temperature=0.0):
-    client = get_client()
-    resp = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": text},
-        ],
-        temperature=temperature,
+if __package__:
+    from .config import RuntimeConfig
+    from .evaluation import evaluate_emotions, evaluate_idt
+    from .feature_engineering import (
+        annotate_emotion, description_text, load_json, parse_label_response, save_json,
     )
-    return resp.choices[0].message.content.strip()
+    from .llm import ModelSession
+    from .prompts import IDT_SYSTEM_PROMPT, VALID_IDT_LABELS
+else:
+    from config import RuntimeConfig
+    from evaluation import evaluate_emotions, evaluate_idt
+    from feature_engineering import (
+        annotate_emotion, description_text, load_json, parse_label_response, save_json,
+    )
+    from llm import ModelSession
+    from prompts import IDT_SYSTEM_PROMPT, VALID_IDT_LABELS
+
+TEXT_FIELD = "description"
+IDT_TARGET = "idt_target"
+EMOTION_TARGET = "emotion_target"  # 僅供既有模型標註資料相容，不能作為情緒真值
 
 
-def run_inference(records, tasks, temperature=0.0):
-    """
-    對每個 task 用對應的 fine-tuned 模型逐筆預測，回填預測欄位，並在有標籤時計算 accuracy。
-
-    Parameters:
-    - records: list of dicts，每筆含 content.description 與（可選）標籤欄位。
-    - tasks: list of dicts，每個含 name / model_name / system_prompt / output_field / label_field。
-
-    Returns:
-    - (records, summaries)：records 已回填預測欄位；summaries 為各 task 的評估結果。
-    """
-    total = len(records)
-    summaries = []
-
-    for task in tasks:
-        name = task["name"]
-        model_name = task["model_name"]
-        system_prompt = task["system_prompt"]
-        output_field = task["output_field"]
-        label_field = task.get("label_field")
-
-        print(f"[{name}] 用 {model_name} 預測 {total} 筆 -> {output_field}")
-        correct = 0
-        labeled = 0
-        for i, record in enumerate(records, start=1):
-            text = str(record["content"].get(TEXT_FIELD) or "").strip()
-            pred = predict_single(text, model_name, system_prompt, temperature) if text else ""
-            record[output_field] = pred
-
-            truth = str(record.get(label_field) or "").strip() if label_field else ""
-            if truth:
-                labeled += 1
-                is_correct = pred == truth
-                correct += int(is_correct)
-                print(f"  [{i}/{total}] truth={truth} pred={pred} {'OK' if is_correct else 'X'}")
-            else:
-                print(f"  [{i}/{total}] {pred}")
-
-        if labeled:
-            accuracy = correct / labeled
-            print(f"[{name}] accuracy: {accuracy:.4f} ({correct}/{labeled})")
-            summaries.append(
-                {
-                    "task": name,
-                    "model": model_name,
-                    "label_field": label_field,
-                    "n": labeled,
-                    "n_correct": correct,
-                    "accuracy": accuracy,
-                }
+def predict_idt(
+    text: str,
+    *,
+    generator: Callable,
+    config: RuntimeConfig,
+    temperature: float = 0.0,
+    max_retries: int = 2,
+) -> str:
+    """驗證 IDT 輸出是個人／系統；不將其他回答當成有效預測。"""
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("IDT 推論的輸入必須是非空白文字。")
+    if isinstance(max_retries, bool) or not isinstance(max_retries, int) or max_retries < 0:
+        raise ValueError("max_retries 必須是非負整數。")
+    last_error = None
+    for _ in range(max_retries + 1):
+        try:
+            raw = generator(
+                IDT_SYSTEM_PROMPT,
+                text.strip(),
+                temperature=temperature,
+                max_new_tokens=config.max_new_tokens,
             )
+            return parse_label_response(raw, "idt", VALID_IDT_LABELS)
+        except (ValueError, TypeError) as exc:
+            last_error = exc
+    raise RuntimeError(
+        f"{config.gemma_model} IDT 推論在 {max_retries + 1} 次嘗試後仍未產生合法標籤。"
+    ) from last_error
 
-    return records, summaries
+
+def run_inference(
+    records: list,
+    *,
+    config: RuntimeConfig | None = None,
+    models_dir: str = "models",
+    temperature: float = 0.0,
+) -> tuple[list, list]:
+    """先完成 IDT adapter 推論，再以原始 Gemma 重新預測情緒。"""
+    if not isinstance(records, list):
+        raise ValueError("資料 JSON 最外層必須是陣列。")
+    texts = [description_text(record, index) for index, record in enumerate(records, 1)]
+    config = config or RuntimeConfig()
+    adapter_path = Path(models_dir) / "idt_adapter"
+    if records:
+        # 兩個階段各自釋放模型，情緒標註不套用只為 IDT 訓練的 adapter。
+        with ModelSession(config.gemma_model, config, adapter_path=adapter_path) as session:
+            for index, (record, text) in enumerate(zip(records, texts), 1):
+                prediction = predict_idt(
+                    text, generator=session.generate, config=config, temperature=temperature
+                )
+                record["idt_pred"] = prediction
+                record["idt_prediction_model"] = config.gemma_model
+                record["idt_adapter_path"] = str(adapter_path)
+                print(f"[IDT 推論 {index}/{len(records)}] {prediction}")
+        with ModelSession(config.gemma_model, config) as session:
+            for index, (record, text) in enumerate(zip(records, texts), 1):
+                prediction = annotate_emotion(text, generator=session.generate, config=config)
+                record["emotion_pred"] = prediction
+                record["emotion_prediction_model"] = config.gemma_model
+                record["emotion_prediction_source"] = "llm_generated"
+                # 更新預測後，先清除前一次的評分，避免舊評分套用到新標籤。
+                record.pop("emotion_judge", None)
+                print(f"[情緒推論 {index}/{len(records)}] {prediction}")
+    idt_summary = evaluate_idt(records, model_name=config.gemma_model)
+    idt_summary["adapter_path"] = str(adapter_path)
+    emotion_summary = {
+        "task": "emotion",
+        "model": config.gemma_model,
+        "prediction_field": "emotion_pred",
+        "n": len(records),
+        "evaluation_status": "not_scored",
+        "limitation": "情緒沒有人工真實標籤，需另外使用 Qwen 評分。",
+    }
+    return records, [idt_summary, emotion_summary]
 
 
 def run(
-    in_path: str = "data/interim/test_features.json",
+    in_path: str = "data/processed_data/test_data.json",
     out_dir: str = "results",
     models_dir: str = "models",
-):
-    """用 models/ 下的兩個 fine-tuned 模型，對 test_features.json 做 idt + emotion 預測與評估。"""
-    with open(in_path, encoding="utf-8") as f:
-        records = json.load(f)
-
-    tasks = [
-        {
-            "name": "idt",
-            "model_name": read_model_id(f"{models_dir}/idt_model.txt"),
-            "system_prompt": IDT_SYSTEM_PROMPT,
-            "output_field": "idt_pred",
-            "label_field": IDT_TARGET,
-        },
-        {
-            "name": "emotion",
-            "model_name": read_model_id(f"{models_dir}/emotion_model.txt"),
-            "system_prompt": EMOTION_SYSTEM_PROMPT,
-            "output_field": "emotion_pred",
-            "label_field": EMOTION_TARGET,
-        },
-    ]
-
-    records, summaries = run_inference(records, tasks)
-
-    out_dir_path = Path(out_dir)
-    out_dir_path.mkdir(parents=True, exist_ok=True)
-
-    pred_path = out_dir_path / "inference_predictions.json"
-    pred_path.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"已輸出預測: {pred_path}")
-
-    eval_path = out_dir_path / "inference_evaluation.json"
-    eval_path.write_text(json.dumps(summaries, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"已輸出評估: {eval_path}")
-
+    *,
+    config: RuntimeConfig | None = None,
+    evaluate_emotion: bool = True,
+) -> list:
+    """輸出 IDT／情緒預測，並以 Qwen 對情緒給出 1 至 5 分與理由。"""
+    config = config or RuntimeConfig()
+    records, summaries = run_inference(
+        load_json(in_path), config=config, models_dir=models_dir
+    )
+    output_dir = Path(out_dir)
+    prediction_path = output_dir / "inference_predictions.json"
+    evaluation_path = output_dir / "inference_evaluation.json"
+    # 評分失敗時仍保留已完成的 Gemma 預測，可使用 evaluate 流程重試。
+    save_json(records, prediction_path)
+    # 同步更新評估狀態，避免 Qwen 失敗後留下上一次推論的評估結果。
+    save_json(summaries, evaluation_path)
+    if evaluate_emotion:
+        # run_inference 已關閉 Gemma，此處才載入 Qwen，降低 GPU 記憶體需求。
+        emotion_summary = evaluate_emotions(records, config=config)
+        emotion_summary["annotation_model"] = config.gemma_model
+        summaries[1] = emotion_summary
+        save_json(records, prediction_path)
+    else:
+        summaries[1]["evaluation_status"] = "skipped"
+    save_json(summaries, evaluation_path)
+    print(f"已輸出預測：{prediction_path}")
+    print(f"已輸出評估：{evaluation_path}")
     return summaries
 
 
