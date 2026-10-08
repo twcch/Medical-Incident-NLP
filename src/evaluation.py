@@ -2,18 +2,23 @@
 
 import json
 import math
+from collections.abc import Callable
+from contextlib import ExitStack
 from numbers import Real
 from pathlib import Path
-from typing import Callable
 
 if __package__:
     from .config import RuntimeConfig
-    from .feature_engineering import description_text, load_json, save_json
+    from .feature_engineering import description_text
+    from .json_io import load_records as load_json
+    from .json_io import save_json
     from .llm import ModelSession, parse_json_object
     from .prompts import EMOTION_LABELS, VALID_IDT_LABELS
 else:
     from config import RuntimeConfig
-    from feature_engineering import description_text, load_json, save_json
+    from feature_engineering import description_text
+    from json_io import load_records as load_json
+    from json_io import save_json
     from llm import ModelSession, parse_json_object
     from prompts import EMOTION_LABELS, VALID_IDT_LABELS
 
@@ -40,6 +45,7 @@ JUDGE_SYSTEM_PROMPT = """你是醫療事件文本情緒標註的獨立評審。�
 
 
 def _validate_score(value, field: str) -> float:
+    """拒絕布林值與非有限數值，避免無效分數污染平均值。"""
     if isinstance(value, bool) or not isinstance(value, Real):
         raise ValueError(f"{field} 必須是 1 至 5 的數值，不能是布林值或文字。")
     score = float(value)
@@ -48,8 +54,14 @@ def _validate_score(value, field: str) -> float:
     return score
 
 
+def _validate_retries(max_retries: int) -> None:
+    """重試次數不含初次生成；明確排除 Python 會視為整數的布林值。"""
+    if isinstance(max_retries, bool) or not isinstance(max_retries, int) or max_retries < 0:
+        raise ValueError("max_retries 必須是非負整數。")
+
+
 def parse_judge_response(raw: str) -> dict:
-    """嚴格驗證 Qwen 的三個評分面向，再由程式計算總分。"""
+    """只接受指定的評分欄位，三面向各占相同權重，總分由程式重新計算。"""
     if not isinstance(raw, str):
         raise ValueError("Qwen 的評分輸出必須是 JSON 文字。")
     result = parse_json_object(raw)
@@ -62,6 +74,7 @@ def parse_judge_response(raw: str) -> dict:
     rationale = result["rationale"]
     if not isinstance(rationale, str) or not rationale.strip():
         raise ValueError("Qwen 的 rationale 必須是非空白文字。")
+    # 模型附帶的總分也須合法，但不採用它，以免與三面向的算術平均矛盾。
     if "overall_score" in result:
         _validate_score(result["overall_score"], "overall_score")
     return {
@@ -75,18 +88,26 @@ def judge_emotion(
     text: str,
     emotion: str,
     *,
-    generator: Callable,
+    generator: Callable[..., str],
     model_name: str,
     max_retries: int = 2,
     max_new_tokens: int = 512,
 ) -> dict:
-    """逐筆評分；格式或分數錯誤重試後，仍無效則顯式失敗。"""
+    """重試無效評分；max_retries 不含第一次生成，耗盡後保留原始錯誤。"""
     if not isinstance(text, str) or not text.strip():
         raise ValueError("情緒評分的輸入必須是非空白文字。")
     if not isinstance(emotion, str) or emotion not in EMOTION_LABELS:
         raise ValueError("情緒評分必須提供合法的 Gemma 情緒標籤。")
-    if isinstance(max_retries, bool) or not isinstance(max_retries, int) or max_retries < 0:
-        raise ValueError("max_retries 必須是非負整數。")
+    _validate_retries(max_retries)
+    if not callable(generator):
+        raise ValueError("generator 必須是可呼叫的文字生成函式。")
+    if (
+        isinstance(max_new_tokens, bool)
+        or not isinstance(max_new_tokens, int)
+        or max_new_tokens < 1
+    ):
+        raise ValueError("max_new_tokens 必須是正整數。")
+    # 描述與標籤以 JSON 封裝成待評估資料，評分規則仍由 system prompt 提供。
     payload = json.dumps({"description": text.strip(), "emotion": emotion}, ensure_ascii=False)
     last_error = None
     for _ in range(max_retries + 1):
@@ -99,17 +120,19 @@ def judge_emotion(
             judgment["score_range"] = [1, 5]
             return judgment
         except (ValueError, TypeError) as exc:
+            # 保留最後一次格式／型別錯誤，讓耗盡重試後仍可追查失敗原因。
             last_error = exc
     raise RuntimeError(
         f"{model_name} 情緒評分在 {max_retries + 1} 次嘗試後仍未產生合法評分。"
     ) from last_error
 
 
-def evaluate_idt(records: list, *, model_name: str | None = None) -> dict:
-    """只有個人／系統人工標籤可作為 IDT accuracy 的比較依據。"""
+def evaluate_idt(records: list[dict], *, model_name: str | None = None) -> dict:
+    """只計算同時具有合法人工標籤與預測的資料；沒有可比較資料時 accuracy 為 None。"""
     if not isinstance(records, list):
         raise ValueError("資料 JSON 最外層必須是陣列。")
     labels = list(VALID_IDT_LABELS)
+    # 固定列為人工標籤、欄為預測；沒有樣本的分類也保留零，便於跨批次比較。
     confusion_matrix = {truth: {pred: 0 for pred in labels} for truth in labels}
     correct = labeled = missing_prediction = without_valid_target = 0
     for index, record in enumerate(records, 1):
@@ -118,6 +141,7 @@ def evaluate_idt(records: list, *, model_name: str | None = None) -> dict:
         prediction = record.get("idt_pred")
         truth = record.get("idt_target")
         truth = truth.strip() if isinstance(truth, str) else None
+        # 這兩個缺漏計數可重疊：同一筆可能既無人工標籤，也無模型預測。
         if truth not in labels:
             without_valid_target += 1
         if prediction is None:
@@ -128,6 +152,7 @@ def evaluate_idt(records: list, *, model_name: str | None = None) -> dict:
         if truth not in labels:
             continue
         confusion_matrix[truth][prediction] += 1
+        # accuracy 的分母與矩陣總計一致，不包含缺少人工標籤或預測的紀錄。
         labeled += 1
         correct += int(prediction == truth)
     return {
@@ -148,17 +173,23 @@ def evaluate_idt(records: list, *, model_name: str | None = None) -> dict:
 
 
 def evaluate_emotions(
-    records: list,
+    records: list[dict],
     *,
-    generator: Callable | None = None,
+    generator: Callable[..., str] | None = None,
     config: RuntimeConfig | None = None,
     model_name: str | None = None,
     prediction_field: str = "emotion_pred",
     max_retries: int = 2,
 ) -> dict:
-    """以 Qwen 評分 Gemma 標註並回填 emotion_judge；不使用 emotion_target 作真值。"""
+    """以 Qwen 評分模型情緒標註；全部成功後才回填，emotion_target 不作為真值。"""
     if not isinstance(records, list):
         raise ValueError("資料 JSON 最外層必須是陣列。")
+    _validate_retries(max_retries)
+    if not isinstance(prediction_field, str) or not prediction_field.strip():
+        raise ValueError("prediction_field 必須是非空白欄位名稱。")
+    if generator is not None and not callable(generator):
+        raise ValueError("generator 必須是可呼叫的文字生成函式。")
+    # 先完整檢查資料，避免載入模型後才發現後段紀錄有格式問題。
     inputs = []
     for index, record in enumerate(records, 1):
         text = description_text(record, index)
@@ -168,42 +199,50 @@ def evaluate_emotions(
         inputs.append((text, emotion))
     config = config or RuntimeConfig()
     model_name = model_name or config.judge_model
-    if generator is None and records:
-        with ModelSession(model_name, config) as session:
-            return evaluate_emotions(
-                records,
-                generator=session.generate,
-                config=config,
-                model_name=model_name,
-                prediction_field=prediction_field,
-                max_retries=max_retries,
-            )
     totals = {name: 0.0 for name in SCORE_DIMENSIONS}
     overall_total = 0.0
-    for index, (record, (text, emotion)) in enumerate(zip(records, inputs), 1):
-        judgment = judge_emotion(
-            text,
-            emotion,
-            generator=generator,
-            model_name=model_name,
-            max_retries=max_retries,
-            max_new_tokens=max(512, config.max_new_tokens),
-        )
-        judgment["prediction_field"] = prediction_field
+    judgments = []
+    # 注入假模型時沿用同一流程；空資料無須開啟任何模型 session。
+    with ExitStack() as stack:
+        if generator is None and records:
+            session = stack.enter_context(ModelSession(model_name, config))
+            generator = session.generate
+        for index, (text, emotion) in enumerate(inputs, 1):
+            try:
+                judgment = judge_emotion(
+                    text,
+                    emotion,
+                    generator=generator,
+                    model_name=model_name,
+                    max_retries=max_retries,
+                    max_new_tokens=max(512, config.max_new_tokens),
+                )
+            except RuntimeError as exc:
+                raise RuntimeError(f"第 {index} 筆情緒評分失敗：{exc}") from exc
+            judgment["prediction_field"] = prediction_field
+            judgments.append(judgment)
+            overall_total += judgment["overall_score"]
+            for name in SCORE_DIMENSIONS:
+                totals[name] += judgment["scores"][name]
+            print(f"[情緒評分 {index}/{len(records)}] {judgment['overall_score']:.2f}/5")
+    # 評分中途失敗時不覆寫任何既有評分，避免新舊結果混在同一批資料中。
+    for record, judgment in zip(records, judgments):
         record["emotion_judge"] = judgment
-        overall_total += judgment["overall_score"]
-        for name in SCORE_DIMENSIONS:
-            totals[name] += judgment["scores"][name]
-        print(f"[情緒評分 {index}/{len(records)}] {judgment['overall_score']:.2f}/5")
     count = len(records)
+    # 訓練特徵與測試推論分別記錄來源欄位，摘要回報所評情緒的實際標註模型。
     source_field = (
-        "emotion_annotation_model" if prediction_field == "emotion_target"
+        "emotion_annotation_model"
+        if prediction_field == "emotion_target"
         else "emotion_prediction_model"
     )
-    annotation_models = sorted({
-        record[source_field] for record in records
-        if isinstance(record.get(source_field), str) and record[source_field].strip()
-    })
+    annotation_models = sorted(
+        {
+            record[source_field]
+            for record in records
+            if isinstance(record.get(source_field), str) and record[source_field].strip()
+        }
+    )
+    # 各面向先跨紀錄取平均；總分是逐筆三面向平均再跨紀錄平均，空批次為 None。
     return {
         "task": "emotion",
         "method": "llm_judge",
@@ -220,31 +259,35 @@ def evaluate_emotions(
 
 
 def run(
-    in_path: str = "results/inference_predictions.json",
-    out_dir: str = "results",
+    in_path: str | Path = "results/inference_predictions.json",
+    out_dir: str | Path = "results",
     *,
     config: RuntimeConfig | None = None,
     prediction_field: str = "emotion_pred",
-) -> list:
+) -> list[dict]:
     """對既有預測重新評分，無須再次載入 Gemma 或 IDT adapter。"""
     records = load_json(in_path)
     idt_models = {
-        record.get("idt_prediction_model") for record in records
+        record.get("idt_prediction_model")
+        for record in records
         if isinstance(record, dict) and isinstance(record.get("idt_prediction_model"), str)
     }
+    # 混合多個 IDT 模型的預測時，不將整批 accuracy 誤歸屬於其中任一模型。
     idt_summary = evaluate_idt(
         records, model_name=next(iter(idt_models)) if len(idt_models) == 1 else None
     )
     emotion_summary = evaluate_emotions(records, config=config, prediction_field=prediction_field)
     summaries = [idt_summary, emotion_summary]
     output_dir = Path(out_dir)
+    # Qwen 評分全部成功才寫入；評分失敗時保留原始預測與上一批完整摘要。
     save_json(records, output_dir / "inference_predictions.json")
     save_json(summaries, output_dir / "inference_evaluation.json")
     print(f"已輸出評分：{output_dir / 'inference_evaluation.json'}")
     return summaries
 
 
-def main():
+def main() -> None:
+    """以預設結果路徑執行獨立評分；可由專案 CLI 指定其他輸入。"""
     run()
 
 

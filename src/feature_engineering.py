@@ -1,15 +1,18 @@
 """使用 Gemma 標註事件描述的撰寫者情緒；此標註不是人工真實標籤。"""
 
-import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 if __package__:
     from .config import RuntimeConfig
+    from .json_io import load_records
+    from .json_io import save_json as write_json
     from .llm import ModelSession, parse_json_object
     from .prompts import EMOTION_LABELS, EMOTION_SYSTEM_PROMPT
 else:
     from config import RuntimeConfig
+    from json_io import load_records
+    from json_io import save_json as write_json
     from llm import ModelSession, parse_json_object
     from prompts import EMOTION_LABELS, EMOTION_SYSTEM_PROMPT
 
@@ -29,7 +32,10 @@ def description_text(record: dict, index: int | None = None) -> str:
 
 
 def parse_label_response(raw: str, field: str, valid_labels) -> str:
-    """只接受合法單一標籤，或僅含指定欄位的 JSON 物件。"""
+    """只接受合法單一標籤，或僅含指定欄位的 JSON 物件。
+
+    IDT 與情緒共用此解析器；呼叫端以 field 及 valid_labels 指定各自的格式。
+    """
     if not isinstance(raw, str):
         raise ValueError("模型標籤輸出必須是文字。")
     cleaned = raw.strip()
@@ -52,7 +58,10 @@ def annotate_emotion(
     model_name: str | None = None,
     config: RuntimeConfig | None = None,
 ) -> str:
-    """重試格式錯誤的輸出；仍失敗時中止，不替換為中性。"""
+    """重試格式錯誤的輸出；仍失敗時中止，不替換為中性。
+
+    max_retries 不包含第一次生成；generator 可注入假模型或已載入的 session。
+    """
     if not isinstance(text, str) or not text.strip():
         raise ValueError("情緒標註的輸入必須是非空白文字。")
     if isinstance(max_retries, bool) or not isinstance(max_retries, int) or max_retries < 0:
@@ -92,40 +101,42 @@ def add_emotion_feature(
     model_name: str | None = None,
     config: RuntimeConfig | None = None,
 ) -> list:
-    """逐筆回填模型情緒標註，並留下模型來源，供後續 Qwen 評分。"""
+    """整批成功後回填情緒與模型來源；失敗不留下部分更新的輸入。"""
     if not isinstance(records, list):
         raise ValueError("資料 JSON 最外層必須是陣列。")
+    # 在載入模型前檢查所有描述，避免處理到後段才發現輸入缺漏。
     texts = [description_text(record, index) for index, record in enumerate(records, 1)]
     config = config or RuntimeConfig()
     model_name = model_name or config.gemma_model
     if generator is None and records:
+        # 整批標註只載入一次；空資料直接返回，不開啟模型 session。
         with ModelSession(model_name, config) as session:
             return add_emotion_feature(
                 records, generator=session.generate, model_name=model_name, config=config
             )
-    for index, (record, text) in enumerate(zip(records, texts), 1):
-        emotion = annotate_emotion(
-            text, generator=generator, model_name=model_name, config=config
-        )
+    # 模型呼叫可能中途失敗，先收集所有結果，再一起修改呼叫端的資料。
+    emotions = []
+    for index, text in enumerate(texts, 1):
+        emotion = annotate_emotion(text, generator=generator, model_name=model_name, config=config)
+        emotions.append(emotion)
+        print(f"[情緒標註 {index}/{len(records)}] {emotion}")
+    for record, emotion in zip(records, emotions):
         record[EMOTION_FIELD] = emotion
+        # 即使欄名保留 target，來源仍是模型推測，不能宣稱為人工情緒真值。
         record["emotion_annotation_model"] = model_name
         record["emotion_annotation_source"] = "llm_generated"
         record["emotion_annotation_is_gold"] = False
-        print(f"[情緒標註 {index}/{len(records)}] {emotion}")
     return records
 
 
 def load_json(path: str | Path) -> list:
-    records = json.loads(Path(path).read_text(encoding="utf-8"))
-    if not isinstance(records, list):
-        raise ValueError("資料 JSON 最外層必須是陣列。")
-    return records
+    """沿用資料流程的讀取介面，共用 JSON 格式與紀錄驗證。"""
+    return load_records(path)
 
 
 def save_json(records, path: str | Path) -> None:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
+    """輸出標準 JSON，寫入失敗時保留前一次的完整結果。"""
+    write_json(records, path)
 
 
 def run(in_path: str, out_path: str, *, config: RuntimeConfig | None = None) -> list:
@@ -137,6 +148,7 @@ def run(in_path: str, out_path: str, *, config: RuntimeConfig | None = None) -> 
 
 
 def main():
+    """為增生完成的訓練資料補上模型情緒標註及可追蹤的來源資訊。"""
     run("data/interim/train_augmented.json", "data/interim/train_features.json")
 
 

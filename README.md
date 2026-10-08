@@ -247,6 +247,8 @@ LoRA 預設只訓練文字模型 `language_model` 下的 `q_proj`、`v_proj` ada
 
 訓練 metadata 保留模型、參數、樣本數、資料與 IDT prompt 的 SHA-256 及訓練 metrics，方便核對實驗來源。CLI 支援 `--train-data`、`--train-augmented`、`--train-features`、`--test-data`、`--models-dir`、`--out-dir` 覆寫預設路徑。
 
+資料 JSON 的讀寫統一由 [src/json_io.py](src/json_io.py) 處理，讀取時驗證最外層為紀錄陣列、每筆為物件，並拒絕 `NaN`／`Infinity`。寫入時先完整序列化，再用同目錄暫存檔原子替換，避免格式或寫入失敗截斷既有結果；此保障以單一檔案為單位。訓練情緒標註與 Qwen 評分會等整批成功後才回填記憶體中的資料，失敗時保留原有標註或評分。
+
 ## 評估方式與目前驗證狀態
 
 IDT 只比較有效的人工 `idt_target`（`個人`／`系統`）與 `idt_pred`，輸出樣本數、正確筆數、accuracy 及 confusion matrix；confusion matrix 的列為人工標籤、欄為預測標籤。缺少有效人工標籤的資料不進入 accuracy 分母。
@@ -270,3 +272,15 @@ PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
 ```
 
 測試中的小模型 LoRA smoke test 使用 2 筆合成資料與隨機初始化的微型模型，驗證訓練、adapter 儲存及重新載入，不下載大型模型；缺少 `peft`／`accelerate` 等所需依賴時會標記 skip。mock tests、小模型測試與 `--dry-run` 都不能替代完整 Gemma 訓練或 Qwen 評分。本次開發的本機環境沒有可用 CUDA／MPS，未啟動正式資料流程，也尚未執行大型真實模型訓練與推論。
+
+## 程式品質檢查
+
+[pyproject.toml](pyproject.toml) 設定 Python 3.11、100 字元的格式化行寬，以及語法、未使用名稱、import 順序與 Python 語法更新檢查。Ruff 為開發工具，可另外安裝後執行：
+
+```bash
+python -m pip install ruff
+python -m ruff check run.py src tests
+python -m ruff format --check run.py src tests
+```
+
+修改格式可執行 `python -m ruff format run.py src tests`。設定會排除 `_old/`；執行測試時使用上方的 `PYTHONDONTWRITEBYTECODE=1`，避免更新已存在的 Python bytecode。新增註解以資料來源、失敗處理、模型記憶體與 loss mask 的設計理由為主，型別與流程本身能表達的操作不重複註解。
