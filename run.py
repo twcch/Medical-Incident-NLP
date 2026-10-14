@@ -9,40 +9,62 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-from src import data_augmentation, data_preprocessing, evaluation, feature_engineering, trainer
+from src import (
+    data_augmentation,
+    data_preprocessing,
+    data_split,
+    evaluation,
+    feature_engineering,
+    trainer,
+)
 from src import inference as predictor
 from src.config import RuntimeConfig, TrainingConfig
 
-# 清洗、增生與情緒標註各自保留輸出，便於核對哪個階段改變了資料。
+# 清洗、切分、增生與情緒標註各自保留輸出，便於核對哪個階段改變了資料。
+CLEANED_DATA = "data/processed_data/cleaned_data.json"
 TRAIN_DATA = "data/processed_data/train_data.json"
+VAL_DATA = "data/processed_data/val_data.json"
+TEST_DATA = "data/processed_data/test_data.json"
 TRAIN_AUGMENTED = "data/interim/train_augmented.json"
 TRAIN_FEATURES = "data/interim/train_features.json"
-TEST_DATA = "data/processed_data/test_data.json"
 
 
 def prepare(
     *,
     raw_file: str | Path = data_preprocessing.RAW_FILE,
+    cleaned_data: str | Path = CLEANED_DATA,
     train_data: str | Path = TRAIN_DATA,
+    val_data: str | Path = VAL_DATA,
+    test_data: str | Path = TEST_DATA,
     train_augmented: str | Path = TRAIN_AUGMENTED,
     train_features: str | Path = TRAIN_FEATURES,
-    train_sheets: Sequence[str] | None = None,
+    sheets: Sequence[str] | None = None,
+    split_ratio: Sequence[float] = data_split.DEFAULT_RATIO,
+    split_seed: int = data_split.DEFAULT_SEED,
     augment_n: int = 2,
+    augment_on_failure: str = "keep-partial",
     config: RuntimeConfig | None = None,
 ) -> list:
-    """依序產生清洗資料、改寫資料與帶情緒標註的訓練特徵。
+    """依序產生清洗資料、訓練／驗證／測試切分、改寫資料與帶情緒標註的訓練特徵。
 
-    增生沿用人工 IDT 標籤；新增的情緒欄位只記錄模型標註，不是人工真值。
-    回傳最後的紀錄陣列，同時保留三個階段的 JSON 輸出。
+    切分發生在增生之前，且只有訓練集會增生與標註情緒；驗證與測試集維持原文，
+    才不會讓改寫版本與其原文落在不同集合。增生沿用人工 IDT 標籤，新增的情緒欄位
+    只記錄模型標註，不是人工真值。回傳最後的紀錄陣列，同時保留各階段的 JSON 輸出。
     """
     config = config or RuntimeConfig()
     # None 表示使用預設月份；空清單交由資料層回報，避免靜默改讀預設資料。
-    sheets = data_preprocessing.TRAIN_SHEETS if train_sheets is None else train_sheets
-    print("=== 1. 訓練資料讀取與清洗 ===")
-    data_preprocessing.run(sheets, train_data, raw_file=raw_file)
-    print("=== 2. 保留 y（人工 IDT 標籤）的資料增生 ===")
-    data_augmentation.run(train_data, train_augmented, n=augment_n, config=config)
-    print("=== 3. Gemma 撰寫者情緒標註 ===")
+    sheets = data_preprocessing.ALL_SHEETS if sheets is None else sheets
+    print("=== 1. 資料讀取與清洗 ===")
+    data_preprocessing.run(sheets, cleaned_data, raw_file=raw_file)
+    print("=== 2. 依比例切分訓練／驗證／測試 ===")
+    data_split.run(
+        cleaned_data, train_data, val_data, test_data, ratio=split_ratio, seed=split_seed
+    )
+    print("=== 3. 保留 y（人工 IDT 標籤）的資料增生 ===")
+    data_augmentation.run(
+        train_data, train_augmented, n=augment_n, config=config, on_failure=augment_on_failure
+    )
+    print("=== 4. Gemma 撰寫者情緒標註 ===")
     return feature_engineering.run(train_augmented, train_features, config=config)
 
 
@@ -57,14 +79,17 @@ def train(
 ) -> str:
     """訓練 IDT adapter 並回傳其目錄；prepare_options 沿用 prepare 的參數。
 
-    reuse_prepared=True 時直接讀取 train_features，省去資料準備與情緒標註。
+    reuse_prepared=True 時直接讀取既有的 train_features 與 val_data，
+    省去資料準備、切分與情緒標註。
     """
     if not reuse_prepared:
         prepare(config=config, **prepare_options)
     train_features = prepare_options.get("train_features", TRAIN_FEATURES)
-    print("=== 4. Gemma IDT LoRA fine-tuning ===")
+    val_data = prepare_options.get("val_data", VAL_DATA)
+    print("=== 5. Gemma IDT LoRA fine-tuning ===")
     return trainer.run(
         train_features,
+        val_path=str(val_data),
         config=config,
         training_config=training_config,
         models_dir=models_dir,
@@ -74,23 +99,17 @@ def train(
 
 def inference(
     *,
-    raw_file: str | Path = data_preprocessing.RAW_FILE,
     test_data: str | Path = TEST_DATA,
-    reuse_prepared: bool = False,
     config: RuntimeConfig | None = None,
     models_dir: str | Path = "models",
     out_dir: str | Path = "results",
-    test_sheets: Sequence[str] | None = None,
     evaluate_emotion: bool = True,
 ) -> list:
-    """測試集只清洗與推論，不增生；回傳 IDT 與情緒的評估摘要。
+    """測試集只推論、不增生；回傳 IDT 與情緒的評估摘要。
 
-    重用資料只省去 Excel 清洗，仍重新產生預測；可將 Qwen 評分留到之後。
+    測試資料直接使用 prepare 切分的結果，不在此重新清洗或切分，
+    確保評估的紀錄與訓練時保留的測試集一致。可將 Qwen 評分留到之後。
     """
-    if not reuse_prepared:
-        sheets = data_preprocessing.TEST_SHEETS if test_sheets is None else test_sheets
-        print("=== 測試資料讀取與清洗（不增生）===")
-        data_preprocessing.run(sheets, test_data, raw_file=raw_file)
     print("=== Gemma IDT 推論、情緒標註與 Qwen 評分 ===")
     return predictor.run(
         test_data,
@@ -109,34 +128,51 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "mode",
         choices=["prepare", "train", "inference", "evaluate", "all"],
-        help="prepare 資料準備；train 準備+LoRA；inference 推論+評分；evaluate 單獨評分；all 全流程",
+        help="prepare 資料準備與切分；train 準備+LoRA；inference 推論+評分；"
+        "evaluate 單獨評分；all 全流程",
     )
-    # 資料來源與各階段輸出可分別指定，讓更新月份及多次實驗各自保留結果。
+    # 資料來源與各階段輸出可分別指定，讓更新資料及多次實驗各自保留結果。
     parser.add_argument("--raw-file", default=data_preprocessing.RAW_FILE)
     parser.add_argument(
-        "--train-sheets",
+        "--sheets",
         nargs="+",
-        default=data_preprocessing.TRAIN_SHEETS,
-        help="訓練工作表，可依更新後資料指定月份",
+        default=data_preprocessing.ALL_SHEETS,
+        help="納入切分的工作表，預設 112.01–114.12 全部月份",
     )
     parser.add_argument(
-        "--test-sheets",
-        nargs="+",
-        default=data_preprocessing.TEST_SHEETS,
-        help="測試工作表，可依更新後資料指定月份",
+        "--split-ratio",
+        nargs=3,
+        type=float,
+        default=list(data_split.DEFAULT_RATIO),
+        metavar=("TRAIN", "VAL", "TEST"),
+        help="訓練、驗證、測試的比例，預設 7 1 2",
     )
+    # 切分種子與訓練的 --seed 分開，換訓練種子比較結果時不會連資料集一起改變。
+    parser.add_argument(
+        "--split-seed", type=int, default=data_split.DEFAULT_SEED, help="資料切分的隨機種子"
+    )
+    parser.add_argument("--cleaned-data", default=CLEANED_DATA)
     parser.add_argument("--train-data", default=TRAIN_DATA)
+    parser.add_argument("--val-data", default=VAL_DATA)
+    parser.add_argument("--test-data", default=TEST_DATA)
     parser.add_argument("--train-augmented", default=TRAIN_AUGMENTED)
     parser.add_argument("--train-features", default=TRAIN_FEATURES)
-    parser.add_argument("--test-data", default=TEST_DATA)
     parser.add_argument("--models-dir", default="models")
     parser.add_argument("--out-dir", default="results")
     parser.add_argument("--augment-n", type=int, default=2, help="每筆新增的改寫數，0 表示不增生")
+    # 增生要跑數小時，某筆湊不滿時預設保留已取得的版本並列出缺額，不讓整批作廢。
+    parser.add_argument(
+        "--augment-on-failure",
+        choices=data_augmentation.ON_FAILURE_CHOICES,
+        default="keep-partial",
+        help="某筆湊不滿 n 個改寫時：keep-partial 保留已取得的版本並記錄缺額（預設）；"
+        "abort 立即中止",
+    )
     # 重用資料與略過評分是不同控制：前者省去準備，後者延後載入 Qwen。
     parser.add_argument(
         "--reuse-prepared",
         action="store_true",
-        help="train 重用 train-features；inference 重用 test-data",
+        help="略過 prepare：train 重用 train-features 與 val-data，all 的推論使用既有 test-data",
     )
     parser.add_argument(
         "--skip-emotion-evaluation",
@@ -192,13 +228,18 @@ def planned_stages(args: argparse.Namespace) -> list[str]:
     stages = []
     if args.mode in {"prepare", "train", "all"}:
         if args.mode == "prepare" or not args.reuse_prepared:
-            stages.extend(["讀取／清洗訓練集", "保留 y 增生", "Gemma 情緒標註"])
+            stages.extend(
+                [
+                    "讀取／清洗資料",
+                    "切分訓練／驗證／測試",
+                    "保留 y 增生（僅訓練集）",
+                    "Gemma 情緒標註（僅訓練集）",
+                ]
+            )
         if args.mode in {"train", "all"}:
-            stages.append("IDT LoRA 訓練")
+            stages.append("IDT LoRA 訓練（含驗證損失）")
     if args.mode in {"inference", "all"}:
-        if not args.reuse_prepared:
-            stages.append("讀取／清洗測試集")
-        # 重用清洗後的測試集，仍需重新產生 IDT 與情緒預測。
+        # 測試集沿用 prepare 的切分結果，不再重新讀取或清洗，但仍需重新產生預測。
         stages.extend(["IDT LoRA 推論", "Gemma 情緒標註"])
         if not args.skip_emotion_evaluation:
             stages.append("Qwen 情緒評分")
@@ -217,12 +258,9 @@ def main(argv: Sequence[str] | None = None) -> list | str | None:
     args = parser.parse_args(argv)
     if args.augment_n < 0:
         parser.error("--augment-n 不可為負數。")
-    # 在讀取 Excel 之前檢查月份交集，避免同一工作表同時進入訓練與測試。
-    if args.mode in {"prepare", "train", "inference", "all"} and set(args.train_sheets) & set(
-        args.test_sheets
-    ):
-        parser.error("--train-sheets 與 --test-sheets 不可重疊，避免訓練／測試資料洩漏。")
     try:
+        split_ratio = data_split.validate_ratio(args.split_ratio)
+        data_split.validate_seed(args.split_seed)
         config = RuntimeConfig(
             gemma_model=args.gemma_model,
             judge_model=args.judge_model,
@@ -257,14 +295,20 @@ def main(argv: Sequence[str] | None = None) -> list | str | None:
                     "runtime": asdict(config),
                     "training": asdict(training_config),
                     "augment_n": args.augment_n,
+                    "augment_on_failure": args.augment_on_failure,
+                    "split": {
+                        "ratio": data_split.format_ratio(split_ratio),
+                        "seed": args.split_seed,
+                    },
                     "paths": {
                         "raw_file": args.raw_file,
+                        "sheets": args.sheets,
+                        "cleaned_data": args.cleaned_data,
                         "train_data": args.train_data,
-                        "train_sheets": args.train_sheets,
-                        "test_sheets": args.test_sheets,
+                        "val_data": args.val_data,
+                        "test_data": args.test_data,
                         "train_augmented": args.train_augmented,
                         "train_features": args.train_features,
-                        "test_data": args.test_data,
                         "idt_adapter": str(Path(args.models_dir) / "idt_adapter"),
                         "out_dir": args.out_dir,
                         "evaluation_input": args.evaluation_input
@@ -278,13 +322,25 @@ def main(argv: Sequence[str] | None = None) -> list | str | None:
         )
         return
 
+    # 推論排在訓練之後；測試集不由此階段產生，缺檔需在長時間訓練前就報告。
+    if (
+        args.mode == "inference" or (args.mode == "all" and args.reuse_prepared)
+    ) and not Path(args.test_data).is_file():
+        parser.error(f"找不到測試資料 {args.test_data}；請先執行 prepare 產生切分。")
+
     prepare_options = {
         "raw_file": args.raw_file,
+        "sheets": args.sheets,
+        "cleaned_data": args.cleaned_data,
         "train_data": args.train_data,
-        "train_sheets": args.train_sheets,
+        "val_data": args.val_data,
+        "test_data": args.test_data,
         "train_augmented": args.train_augmented,
         "train_features": args.train_features,
+        "split_ratio": split_ratio,
+        "split_seed": args.split_seed,
         "augment_n": args.augment_n,
+        "augment_on_failure": args.augment_on_failure,
     }
     if args.mode == "prepare":
         return prepare(config=config, **prepare_options)
@@ -302,10 +358,7 @@ def main(argv: Sequence[str] | None = None) -> list | str | None:
             return result
     if args.mode in {"inference", "all"}:
         return inference(
-            raw_file=args.raw_file,
             test_data=args.test_data,
-            test_sheets=args.test_sheets,
-            reuse_prepared=args.reuse_prepared,
             config=config,
             models_dir=args.models_dir,
             out_dir=args.out_dir,

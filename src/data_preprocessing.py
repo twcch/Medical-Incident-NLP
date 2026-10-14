@@ -6,16 +6,17 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.json_io import save_json
+from src.json_io import load_records, save_json
 from src.prompts import VALID_IDT_LABELS
 
-RAW_FILE = "data/raw_data/raw data去辨識0612.xlsx"
+# 預設為先前由本模組從 Excel 清洗輸出的 JSON；仍可用 --raw-file 指定原始 Excel。
+RAW_FILE = "data/raw_data/data.json"
 # Excel 的人工 IDT、事件描述與批示依原欄位順序對應到下游 JSON 欄位。
 COLUMNS = ["IDT分析(個人,系統)", "事件描述", "批示"]
 NEW_COLUMN_NAMES = ["idt_target", "description", "directive"]
 TARGET_COLUMN = NEW_COLUMN_NAMES[0]
-TRAIN_SHEETS = [f"112.{month:02d}" for month in range(1, 13)]
-TEST_SHEETS = ["113.01", "113.02"]
+# 預設納入 112.01–114.12 全部月份；訓練／驗證／測試改依比例切分，不再以月份區分。
+ALL_SHEETS = [f"{year}.{month:02d}" for year in (112, 113, 114) for month in range(1, 13)]
 # 來源欄位僅供追蹤資料與切分稽核，不放入提供給模型的 content。
 SOURCE_COLUMNS = ["_source_sheet", "_source_excel_row"]
 
@@ -74,6 +75,42 @@ def load_and_merge_data(file_path: str | Path, sheet_names, columns) -> pd.DataF
             selected["_source_excel_row"] = range(2, len(selected) + 2)
             data_frames.append(selected)
     return pd.concat(data_frames, ignore_index=True)
+
+
+def load_json_records(file_path: str | Path, sheet_names) -> pd.DataFrame:
+    """依 source_id 的工作表名稱，從清洗後的 JSON 選出指定月份的紀錄。
+
+    JSON 已是下游欄位，不需重新命名；來源工作表與列號由 source_id 還原，
+    讓後續清洗、去重與輸出沿用 Excel 路徑的同一條流程。
+    """
+    sheet_names = _validate_names(sheet_names, "工作表名稱")
+    # 依呼叫端指定的月份順序輸出，與逐張讀取 Excel 時的順序一致。
+    by_sheet = {name: [] for name in sheet_names}
+    for index, record in enumerate(load_records(file_path), start=1):
+        if record.get("is_augmented"):
+            raise ValueError(f"第 {index} 筆是增生資料，原始資料檔不可含改寫版本。")
+        content = record.get("content")
+        source_id = record.get("source_id")
+        if not isinstance(content, dict) or not isinstance(source_id, str):
+            raise ValueError(f"第 {index} 筆缺少 content 物件或 source_id。")
+        sheet, _, row = source_id.rpartition(":")
+        if not sheet or not row.isdecimal():
+            raise ValueError(f"第 {index} 筆的 source_id 必須是「工作表:Excel 列號」。")
+        if sheet in by_sheet:
+            by_sheet[sheet].append(
+                {
+                    TARGET_COLUMN: record.get(TARGET_COLUMN),
+                    "description": content.get("description"),
+                    "directive": content.get("directive"),
+                    "_source_sheet": sheet,
+                    "_source_excel_row": int(row),
+                }
+            )
+    # 清洗後整張工作表可能沒有合法紀錄；此時與找不到工作表一樣明確中止，不靜默讀成空資料。
+    missing = [name for name, rows in by_sheet.items() if not rows]
+    if missing:
+        raise ValueError(f"資料檔中找不到工作表的紀錄：{', '.join(missing)}")
+    return pd.DataFrame([row for rows in by_sheet.values() for row in rows])
 
 
 def rename_columns(data: pd.DataFrame, new_column_names) -> pd.DataFrame:
@@ -175,9 +212,15 @@ def save_data_to_json(
 
 
 def run(sheet_names, out_path: str | Path, raw_file: str | Path = RAW_FILE) -> pd.DataFrame:
-    """資料讀取 → 清洗 → JSON；訓練與測試工作表由呼叫端分開指定。"""
-    data = load_and_merge_data(raw_file, sheet_names, COLUMNS)
-    data = rename_columns(data, NEW_COLUMN_NAMES)
+    """資料讀取 → 清洗 → JSON；訓練／驗證／測試的切分交給下一階段的 data_split。
+
+    raw_file 副檔名為 .json 時讀取清洗後的紀錄，其餘視為原始 Excel。
+    """
+    if Path(raw_file).suffix.lower() == ".json":
+        data = load_json_records(raw_file, sheet_names)
+    else:
+        data = load_and_merge_data(raw_file, sheet_names, COLUMNS)
+        data = rename_columns(data, NEW_COLUMN_NAMES)
     data = clean_data(data, target_column=TARGET_COLUMN)
     save_data_to_json(data, out_path, target_column=TARGET_COLUMN)
     stats = data.attrs["cleaning_stats"]
@@ -190,9 +233,8 @@ def run(sheet_names, out_path: str | Path, raw_file: str | Path = RAW_FILE) -> p
 
 
 def main():
-    """依指定月份分別執行訓練與測試清洗，並保留各自的來源資訊。"""
-    run(TRAIN_SHEETS, "data/processed_data/train_data.json")
-    run(TEST_SHEETS, "data/processed_data/test_data.json")
+    """讀取預設全部月份並清洗，保留來源資訊；訓練／驗證／測試的切分由 data_split 負責。"""
+    run(ALL_SHEETS, "data/processed_data/cleaned_data.json")
 
 
 if __name__ == "__main__":

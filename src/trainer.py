@@ -16,25 +16,28 @@ IDT_TARGET = "idt_target"
 LOGGER = logging.getLogger(__name__)
 
 
-def load_examples(json_path: str) -> list:
-    """僅使用 description 與人工 IDT 標籤；情緒偽標籤不作為訓練目標。"""
+def load_examples(json_path: str, *, kind: str = "訓練") -> list:
+    """僅使用 description 與人工 IDT 標籤；情緒偽標籤不作為訓練目標。
+
+    kind 只用於錯誤訊息，讓驗證資料的問題不會被誤認為訓練資料的問題。
+    """
     records = load_records(json_path)
     examples = []
     targets_by_text = {}
     for index, record in enumerate(records, start=1):
         content = record.get("content")
         if not isinstance(content, dict):
-            raise ValueError(f"第 {index} 筆訓練資料的 content 必須為 JSON 物件，請先執行清洗。")
+            raise ValueError(f"第 {index} 筆{kind}資料的 content 必須為 JSON 物件，請先執行清洗。")
         description = content.get(TEXT_FIELD)
         target = record.get(IDT_TARGET)
         if not isinstance(description, str) or not isinstance(target, str):
             raise ValueError(
-                f"第 {index} 筆訓練資料的描述與人工 IDT 標籤必須為字串，請先執行清洗。"
+                f"第 {index} 筆{kind}資料的描述與人工 IDT 標籤必須為字串，請先執行清洗。"
             )
         text = description.strip()
         label = target.strip()
         if not text or label not in VALID_IDT_LABELS:
-            raise ValueError(f"第 {index} 筆訓練資料缺少描述或有效人工 IDT 標籤，請先執行清洗。")
+            raise ValueError(f"第 {index} 筆{kind}資料缺少描述或有效人工 IDT 標籤，請先執行清洗。")
         targets_by_text.setdefault(text, set()).add(label)
         examples.append(
             {
@@ -46,7 +49,7 @@ def load_examples(json_path: str) -> list:
             }
         )
     if not examples:
-        raise ValueError("沒有可用的 IDT 訓練樣本。")
+        raise ValueError(f"沒有可用的 IDT {kind}樣本。")
     # 衝突只警告、不自動選標籤，保留人工資料的原始判斷供後續核對。
     conflicts = sum(len(labels) > 1 for labels in targets_by_text.values())
     if conflicts:
@@ -168,15 +171,21 @@ class CompletionCollator:
 def run(
     json_path: str = "data/interim/train_features.json",
     *,
+    val_path: str | None = None,
     config: RuntimeConfig | None = None,
     training_config: TrainingConfig | None = None,
     models_dir: str = "models",
     interim_dir: str = "data/interim",
 ) -> str:
-    """訓練及儲存 IDT adapter；無論成功或失敗都清理模型記憶體。"""
+    """訓練及儲存 IDT adapter；無論成功或失敗都清理模型記憶體。
+
+    指定 val_path 時，每個 epoch 結束以驗證集計算損失並寫入 metadata，供觀察過擬合；
+    驗證損失不用來挑選 checkpoint，儲存的 adapter 一律是訓練結束時的權重。
+    """
     config = config or RuntimeConfig()
     training_config = training_config or TrainingConfig()
     examples = load_examples(json_path)
+    val_examples = load_examples(val_path, kind="驗證") if val_path else []
     # 先驗證資料，再載入訓練套件與模型；格式錯誤不用等待重型依賴初始化。
     try:
         import torch
@@ -189,10 +198,13 @@ def run(
 
     set_seed(config.seed)
     output_dir = Path(models_dir) / "idt_adapter"
-    model = processor = dataset = hf_trainer = None
+    model = processor = dataset = val_dataset = hf_trainer = None
     try:
         model, processor, device, dtype = load_model(config.gemma_model, config, training=True)
         dataset = IDTDataset(examples, processor, training_config.max_length)
+        # 驗證樣本一樣在訓練前完成編碼與長度檢查，避免第一個 epoch 結束才發現超長。
+        if val_examples:
+            val_dataset = IDTDataset(val_examples, processor, training_config.max_length)
         write_jsonl(examples, Path(interim_dir) / "idt_train.jsonl")
         pad_token_id = processor.tokenizer.pad_token_id
         if pad_token_id is None:
@@ -229,6 +241,10 @@ def run(
             use_cpu=device == "cpu",
             optim="adamw_torch",
             logging_steps=10,
+            eval_strategy="epoch" if val_dataset is not None else "no",
+            per_device_eval_batch_size=training_config.batch_size,
+            # 驗證只需要損失；保留整個詞彙表的 logits 會讓評估階段多佔大量顯存。
+            prediction_loss_only=True,
             save_strategy="epoch",
             save_total_limit=2,
             report_to="none",
@@ -239,18 +255,32 @@ def run(
             model=model,
             args=arguments,
             train_dataset=dataset,
+            eval_dataset=val_dataset,
             data_collator=CompletionCollator(pad_token_id),
         )
-        print(f"[idt] {config.gemma_model} LoRA，{len(dataset)} 筆，device={device}，dtype={dtype}")
+        print(
+            f"[idt] {config.gemma_model} LoRA，訓練 {len(dataset)} 筆、"
+            f"驗證 {len(val_dataset) if val_dataset is not None else 0} 筆，"
+            f"device={device}，dtype={dtype}"
+        )
         train_result = hf_trainer.train()
         hf_trainer.save_model(str(output_dir))
         processor.save_pretrained(str(output_dir))
+        validation = None
+        if val_dataset is not None:
+            eval_history = [entry for entry in hf_trainer.state.log_history if "eval_loss" in entry]
+            validation = {
+                "n": len(val_dataset),
+                "data_sha256": hashlib.sha256(Path(val_path).read_bytes()).hexdigest(),
+                "eval_history": eval_history,
+            }
         # 保存參數與來源雜湊，方便比較實驗使用的資料檔、提示詞及訓練設定。
         metadata = {
             "task": "idt",
             "method": "lora",
             "base_model": config.gemma_model,
             "n_train": len(dataset),
+            "n_val": len(val_dataset) if val_dataset is not None else 0,
             "target_field": IDT_TARGET,
             "input_field": f"content.{TEXT_FIELD}",
             "assistant_only_loss": True,
@@ -260,13 +290,14 @@ def run(
             "data_sha256": hashlib.sha256(Path(json_path).read_bytes()).hexdigest(),
             "prompt_sha256": hashlib.sha256(IDT_SYSTEM_PROMPT.encode()).hexdigest(),
             "metrics": train_result.metrics,
+            "validation": validation,
         }
         save_json(metadata, output_dir / "training_metadata.json")
         print(f"[idt] 已儲存 LoRA adapter：{output_dir}")
         return str(output_dir)
     finally:
         # Trainer 也持有模型參照，需一起移除才有機會回收實際模型記憶體。
-        model = processor = dataset = hf_trainer = None
+        model = processor = dataset = val_dataset = hf_trainer = None
         release_memory()
 
 
