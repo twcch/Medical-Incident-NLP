@@ -118,7 +118,16 @@ flowchart TD
 conda activate py313
 python -m pip install torch --index-url https://download.pytorch.org/whl/cu126
 python -m pip install -r requirements.txt
-python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"   # 應顯示 True 與 GPU 名稱
+python -c "import torch; print(torch.cuda.get_device_name(0), (torch.zeros(1, device='cuda') + 1).item())"   # 應顯示 GPU 名稱與 1.0
+```
+
+驗證要實際跑一次 GPU 運算，只看 `torch.cuda.is_available()` 會漏掉下面的情況。
+
+**RTX 50 系列（Blackwell，`sm_120`）不能用 cu126。** cu126 版 PyTorch 只內含 `sm_50`–`sm_90` 的 kernel；這種組合下 `torch.cuda.is_available()` 仍是 `True`，直到第一個 GPU 運算才失敗：`CUDA error: no kernel image is available for execution on the device`。請改裝 cu130 以上的版本（驅動需支援 CUDA 13.0 以上，可看 `nvidia-smi` 右上角的 `CUDA Version`；不足就先更新 NVIDIA 驅動）。已經裝了 cu126 時必須先解除安裝，因為 `pip install torch==2.14.1` 會把已安裝的 `2.14.1+cu126` 視為已滿足而不更換：
+
+```powershell
+python -m pip uninstall -y torch torchvision torchaudio
+python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cu130
 ```
 
 [requirements.txt](requirements.txt) 列出直接依賴與最低版本；上表的「開發環境版本」是目前實際使用的版本，需要完全重現時請依該表固定版本。
@@ -136,7 +145,7 @@ python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_
 - Gemma 4 E2B-it 約 5.1B 參數、Qwen3.5-9B 約 9.7B 參數；以 bf16 計，權重分別約 10 GB 與 19 GB，首次下載合計約 30 GB。
 - **LoRA 訓練建議 24GB 以上顯存。** 在 RTX 3060 12GB（Windows）實測訓練 6 筆樣本（含最長的一筆，batch 1、gradient checkpointing 開啟）：顯存配置峰值達 19.5 GiB。Windows 驅動會把超出的部分放到系統記憶體，所以不一定報錯，但速度會崩潰：中位長度的樣本約 6.6 秒，最長那筆單步要一百多秒。主因是每筆訓練序列至少約 1,500 token（IDT 提示詞本身約 1,400 token），而詞彙表約 26 萬，輸出 logits 就要數 GB。
 - 模型推論（改寫、情緒標註）在 12GB 顯卡上可以執行，約占 10 GB 顯存。Qwen 評分放不進顯存，CUDA 推論時 Accelerate 會自動把部分權重放到 CPU 記憶體，可以執行但很慢。
-- LoRA 訓練使用單一裝置；`--device auto` 依序選擇 CUDA、MPS、CPU，`--device cuda` 在 CUDA 不可用時會明確失敗。
+- LoRA 訓練使用單一裝置；`--device auto` 依序選擇 CUDA、MPS、CPU，`--device cuda` 在 CUDA 不可用，或 PyTorch 沒有該 GPU 架構的 kernel（如上述 RTX 50 系列配 cu126）時，會在載入模型前明確失敗。
 - 真實訓練與 9B 模型評分建議在顯存充足的 GPU 伺服器上執行。
 
 ## 快速開始

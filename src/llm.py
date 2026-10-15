@@ -26,6 +26,28 @@ def parse_json_object(raw: str) -> dict:
     return result
 
 
+def _require_cuda_kernels() -> None:
+    """偵測到 GPU 不代表 PyTorch 內含該架構的 kernel（例如 RTX 50 系列配 cu126 版）。
+
+    先跑一次最小運算，缺少時直接說明原因，不必等到模型下載完、權重初始化才以
+    `no kernel image is available` 失敗。
+    """
+    import torch
+
+    try:
+        torch.zeros(1, device="cuda").add_(1)
+        torch.cuda.synchronize()
+    except RuntimeError as exc:  # 新版 torch 的 AcceleratorError 也是 RuntimeError
+        if "no kernel image" not in str(exc):
+            raise
+        major, minor = torch.cuda.get_device_capability()
+        raise RuntimeError(
+            f"PyTorch {torch.__version__} 沒有包含 {torch.cuda.get_device_name()}"
+            f"（sm_{major}{minor}）的 kernel，只支援 {', '.join(torch.cuda.get_arch_list())}。"
+            f"請改裝含 sm_{major}{minor} 的 CUDA 版 PyTorch，見 README「環境與安裝」。"
+        ) from exc
+
+
 def resolve_device(config: RuntimeConfig) -> str:
     """auto 依序選 CUDA、MPS、CPU；明確指定的 GPU 無法使用時直接回報。"""
     # 延後載入重型依賴，讓純資料處理或測試不必先初始化 Torch。
@@ -38,8 +60,10 @@ def resolve_device(config: RuntimeConfig) -> str:
             if torch.cuda.is_available()
             else ("mps" if torch.backends.mps.is_available() else "cpu")
         )
-    if device == "cuda" and not torch.cuda.is_available():
-        raise RuntimeError("要求使用 CUDA，但此 Python 環境沒有可用的 CUDA GPU。")
+    if device == "cuda":
+        if not torch.cuda.is_available():
+            raise RuntimeError("要求使用 CUDA，但此 Python 環境沒有可用的 CUDA GPU。")
+        _require_cuda_kernels()
     if device == "mps" and not torch.backends.mps.is_available():
         raise RuntimeError("要求使用 MPS，但此 Python 環境沒有可用的 MPS 裝置。")
     return device
