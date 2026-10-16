@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass, field
 
 from utils.preprocessing import LABEL_COLUMN, TEXT_COLUMN
 from utils.progress import Progress, fingerprint
-from utils.prompts import build_augment_messages, parse_augment_response
+from utils.prompts import AUGMENT_PROMPT_ID, build_augment_messages, parse_augment_response
 
 # generate(messages, *, temperature, seed) -> 模型輸出的文字
 Generate = Callable[..., str]
@@ -54,9 +54,10 @@ class AugmentConfig:
         return asdict(self)
 
     def to_meta(self) -> dict:
-        """寫進進度檔的設定；on_failure 不影響輸出內容，不列入。"""
+        """寫進進度檔的設定；on_failure 不影響輸出內容，不列入。提示改了舊進度就不能沿用。"""
         return {
             "stage": "augment",
+            "prompt": AUGMENT_PROMPT_ID,
             "n": self.n,
             "max_attempts": self.max_attempts,
             "temperature": self.temperature,
@@ -93,14 +94,20 @@ def generate_rewrites(
     seed: int,
     seed_parts: tuple = (),
     existing: list[str] | None = None,
+    label: str | None = None,
 ) -> tuple[list[str], int]:
-    """為一段描述補足到 n 個改寫；回傳改寫清單與本次呼叫模型的次數。"""
+    """為一段描述補足到 n 個改寫；回傳改寫清單與本次呼叫模型的次數。
+
+    人工 IDT 標籤與該筆已取得的改寫會一起送給模型（要求不改變分類依據、避免重複）。
+    """
     rewrites = list(existing or [])
     calls = 0
     for index in range(len(rewrites), config.n):
         last_failure = None
         for attempt in range(config.max_attempts):
-            messages = build_augment_messages(description, last_failure)
+            messages = build_augment_messages(
+                description, last_failure, label=label, existing=rewrites
+            )
             raw = generate(
                 messages,
                 temperature=config.temperature,
@@ -173,6 +180,7 @@ def augment_records(
                 seed=seed,
                 seed_parts=(source_id,),
                 existing=existing,
+                label=record[LABEL_COLUMN],
             )
             progress.add(source_id, fp, rewrites=rewrites, calls=calls)
             report.calls += calls

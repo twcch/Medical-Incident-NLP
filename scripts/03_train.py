@@ -37,6 +37,7 @@ from utils.llm import (
     release,
 )
 from utils.preprocessing import count_labels
+from utils.prompts import IDT_PROMPT_ID
 from utils.training import (
     CHECKPOINT_DIR,
     DEFAULT_TARGET_MODULES,
@@ -250,6 +251,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         tokenizer.save_pretrained(str(out_dir))
         metadata = {
             "base_model": model_config.model,
+            "idt_prompt": IDT_PROMPT_ID,  # 04 載入 adapter 時會比對，提示改了就要重新訓練
             "created": datetime.now(UTC).isoformat(timespec="seconds"),
             "device": device,
             "dtype": dtype,

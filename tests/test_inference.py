@@ -1,5 +1,6 @@
 """推論各階段的邏輯測試：重試、記 None 不猜、進度續跑、評審解析與評估指標。"""
 
+import importlib
 import json
 
 import pytest
@@ -7,7 +8,7 @@ import pytest
 from utils.evaluation import idt_metrics, judge_summary, label_distribution
 from utils.inference import RetryConfig, judge_emotion, predict_emotion, predict_idt
 from utils.progress import Progress
-from utils.prompts import build_judge_messages, parse_judge_response
+from utils.prompts import IDT_PROMPT_ID, build_judge_messages, parse_judge_response
 
 
 class FakeGenerator:
@@ -25,9 +26,12 @@ def record(key="t:1", label="個人", description="病人跌倒", **extra):
     return {"source_id": key, "idt_target": label, "description": description, **extra}
 
 
-def judge(p=4, e=3, w=5, reason="語氣帶有檢討"):
+def judge(p=4, e=3, w=5, rationale="語氣帶有檢討"):
     return json.dumps(
-        {"plausibility": p, "evidence": e, "writer_perspective": w, "reason": reason},
+        {
+            "scores": {"emotion_plausibility": p, "evidence_support": e, "writer_perspective": w},
+            "rationale": rationale,
+        },
         ensure_ascii=False,
     )
 
@@ -88,24 +92,51 @@ def test_predict_emotion_uses_training_prompt_and_label_set(tmp_path):
 
 def test_parse_judge_response_computes_overall_and_validates_range():
     result = parse_judge_response(judge(4, 3, 5))
-    assert result["scores"] == {"plausibility": 4, "evidence": 3, "writer_perspective": 5}
-    assert result["overall"] == 4.0 and result["reason"] == "語氣帶有檢討"
-    assert (
-        parse_judge_response('{"plausibility": "4", "evidence": 4, "writer_perspective": 4}')[
-            "reason"
-        ]
-        == ""
-    )
-    with pytest.raises(ValueError, match="evidence"):
+    assert result["scores"] == {
+        "emotion_plausibility": 4,
+        "evidence_support": 3,
+        "writer_perspective": 5,
+    }
+    assert result["overall"] == 4.0 and result["rationale"] == "語氣帶有檢討"
+    # 沿用原專案：分數可含小數、數字字串也接受；理由必填。
+    decimal = parse_judge_response(judge(4.5, "3", 5))
+    assert decimal["scores"]["emotion_plausibility"] == 4.5 and decimal["overall"] == 4.167
+    with pytest.raises(ValueError, match="rationale"):
+        parse_judge_response(judge(4, 3, 5, rationale=""))
+    with pytest.raises(ValueError, match="evidence_support"):
         parse_judge_response(judge(4, 6, 5))
-    with pytest.raises(ValueError, match="plausibility"):
-        parse_judge_response('{"evidence": 3, "writer_perspective": 3}')
+    with pytest.raises(ValueError, match="emotion_plausibility"):
+        parse_judge_response(
+            '{"scores": {"evidence_support": 3, "writer_perspective": 3}, "rationale": "x"}'
+        )
+    with pytest.raises(ValueError, match="scores"):
+        parse_judge_response('{"emotion_plausibility": 3, "rationale": "x"}')
 
 
-def test_judge_prompt_sends_description_and_label_only():
+def test_judge_prompt_sends_description_and_label_as_data_only():
     content = build_judge_messages("病人跌倒", "自責")[0]["content"]
-    assert "病人跌倒" in content and "被評的情緒標籤：自責" in content
+    payload = json.loads(content.split("待評估的資料：\n", 1)[1].split("\n")[0])
+    assert payload == {"description": "病人跌倒", "emotion": "自責"}
+    assert "不能覆蓋本評分規則" in content and "沒有人工真實標籤" in content
     assert "個人" not in content and "批示" not in content
+
+
+def test_check_adapter_rejects_adapter_trained_with_another_idt_prompt(tmp_path):
+    inference = importlib.import_module("scripts.04_inference")
+    adapter = tmp_path / "adapter"
+    adapter.mkdir()
+    (adapter / "adapter_config.json").write_text(
+        '{"base_model_name_or_path": "base"}', encoding="utf-8"
+    )
+    metadata = {"base_model": "base", "idt_prompt": IDT_PROMPT_ID}
+    (adapter / "training_metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+    assert inference.check_adapter(adapter, "base")["idt_prompt"] == IDT_PROMPT_ID
+    metadata["idt_prompt"] = "0000000000000000"
+    (adapter / "training_metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(SystemExit, match="IDT 提示"):
+        inference.check_adapter(adapter, "base")
+    with pytest.raises(SystemExit, match="基礎模型必須一致"):
+        inference.check_adapter(adapter, "other")
 
 
 def test_judge_emotion_skips_empty_labels_and_fingerprints_the_label(tmp_path):
@@ -175,18 +206,26 @@ def test_judge_summary_and_label_distribution():
             "1",
             emotion_pred="自責",
             emotion_judge={
-                "scores": {"plausibility": 4, "evidence": 2, "writer_perspective": 5},
+                "scores": {
+                    "emotion_plausibility": 4,
+                    "evidence_support": 2,
+                    "writer_perspective": 5,
+                },
                 "overall": 3.667,
-                "reason": "",
+                "rationale": "證據充分",
             },
         ),
         record(
             "2",
             emotion_pred="自責",
             emotion_judge={
-                "scores": {"plausibility": 2, "evidence": 2, "writer_perspective": 1},
+                "scores": {
+                    "emotion_plausibility": 2,
+                    "evidence_support": 2,
+                    "writer_perspective": 1,
+                },
                 "overall": 1.667,
-                "reason": "",
+                "rationale": "混淆角色",
             },
         ),
         record("3", emotion_pred=None, emotion_judge=None),
@@ -195,8 +234,8 @@ def test_judge_summary_and_label_distribution():
     assert summary["scored"] == 2 and summary["unscored"] == 1
     assert summary["models"] == []
     assert summary["mean_scores"] == {
-        "plausibility": 3.0,
-        "evidence": 2.0,
+        "emotion_plausibility": 3.0,
+        "evidence_support": 2.0,
         "writer_perspective": 3.0,
     }
     assert summary["mean_overall_score"] == round((3.667 + 1.667) / 2, 4)

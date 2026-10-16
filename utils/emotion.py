@@ -11,7 +11,7 @@ from dataclasses import asdict, dataclass, field
 
 from utils.preprocessing import LABEL_COLUMN, TEXT_COLUMN
 from utils.progress import Progress, fingerprint
-from utils.prompts import build_emotion_messages, parse_emotion_response
+from utils.prompts import EMOTION_PROMPT_ID, build_emotion_messages, parse_emotion_response
 
 Generate = Callable[..., str]
 
@@ -37,8 +37,10 @@ class EmotionConfig:
         return asdict(self)
 
     def to_meta(self) -> dict:
+        """寫進進度檔的設定；提示或情緒清單改了，舊進度就不能沿用。"""
         return {
             "stage": "emotion",
+            "prompt": EMOTION_PROMPT_ID,
             "max_attempts": self.max_attempts,
             "temperature": self.temperature,
         }

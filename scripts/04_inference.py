@@ -64,6 +64,7 @@ from utils.llm import (
 )
 from utils.preprocessing import LABEL_COLUMN, count_labels
 from utils.progress import Progress
+from utils.prompts import EMOTION_PROMPT_ID, IDT_PROMPT_ID, JUDGE_PROMPT_ID
 
 STAGES = ("all", "idt", "emotion", "judge", "evaluate")
 PREDICTION_FIELDS = (IDT_PREDICTION, EMOTION_PREDICTION, EMOTION_JUDGE)
@@ -178,21 +179,27 @@ def model_configs_from_args(
 
 
 def check_adapter(adapter: Path, model_name: str) -> dict:
-    """adapter 目錄要有 adapter_config.json；基礎模型必須與訓練時相同。"""
+    """adapter 目錄要有 adapter_config.json；基礎模型與 IDT 提示詞都必須與訓練時相同。"""
     if not (adapter / "adapter_config.json").is_file():
         sys.exit(
             f"找不到 adapter：{adapter}/adapter_config.json；請先執行 python -m scripts.03_train。"
         )
     metadata_path = adapter / "training_metadata.json"
-    if metadata_path.is_file():
-        trained_on = io.load_json(metadata_path).get("base_model")
-    else:
-        trained_on = io.load_json(adapter / "adapter_config.json").get("base_model_name_or_path")
+    metadata = io.load_json(metadata_path) if metadata_path.is_file() else {}
+    trained_on = metadata.get("base_model") or io.load_json(adapter / "adapter_config.json").get(
+        "base_model_name_or_path"
+    )
     if trained_on and trained_on != model_name:
         sys.exit(
             f"中止：adapter 是用 {trained_on} 訓練的，本次 --model 是 {model_name}；基礎模型必須一致。"
         )
-    return {"path": str(adapter), "base_model": trained_on}
+    trained_prompt = metadata.get("idt_prompt")
+    if trained_prompt and trained_prompt != IDT_PROMPT_ID:
+        sys.exit(
+            f"中止：adapter 是用 IDT 提示 {trained_prompt} 訓練的，目前 utils/prompts.py 的是 "
+            f"{IDT_PROMPT_ID}；提示詞改了要用 03 重新訓練，或換回訓練時的提示。"
+        )
+    return {"path": str(adapter), "base_model": trained_on, "idt_prompt": trained_prompt}
 
 
 def overlay_previous(records: list[dict], previous_path: Path) -> int:
@@ -338,6 +345,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             {
                 **idt_config.to_meta(),
                 "stage": "idt",
+                "prompt": IDT_PROMPT_ID,
                 "adapter": str(args.adapter),
                 **retry.to_dict(),
             },
@@ -352,7 +360,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         )
         run_model_stage(
             "emotion",
-            {**emotion_config.to_meta(), "stage": "emotion", **retry.to_dict()},
+            {
+                **emotion_config.to_meta(),
+                "stage": "emotion",
+                "prompt": EMOTION_PROMPT_ID,
+                **retry.to_dict(),
+            },
             lambda: build_chat_model(emotion_config, temperature=0.0),
             lambda generate, progress: predict_emotion(
                 records, generate=generate, config=retry, progress=progress, on_record=on_record
@@ -367,6 +380,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             {
                 **judge_config.to_meta(),
                 "stage": "judge",
+                "prompt": JUDGE_PROMPT_ID,
                 "emotion_field": args.emotion_field,
                 **judge_retry.to_dict(),
             },
