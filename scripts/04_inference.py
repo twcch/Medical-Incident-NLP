@@ -1,7 +1,8 @@
 """步驟 04 推論與評估，對應流程圖的 ⑥⑦⑧⑨。
 
 對測試集：⑥ 載入本機基礎模型 + IDT adapter 預測 idt_pred（溫度 0，只接受「個人」或「系統」），
-釋放後 ⑦ 以原始模型（不套 adapter）預測 emotion_pred（提示與訓練集標註相同），⑧ 比對人工
+釋放後 ⑦ 以情緒模型（不套 adapter；預設與 02 ④ 同一個 utils/llm.py 的 DEFAULT_EMOTION_MODEL，
+--model 或 --emotion-model 可覆寫）預測 emotion_pred（提示與訓練集標註相同），⑧ 比對人工
 idt_target 算 accuracy 與混淆矩陣，⑨ 再用評審模型對 (description, emotion_pred) 評分。
 模型透過 LangChain 的 chat model 介面呼叫：⑥ 一定是本機模型（要掛 adapter）；⑦ 與 ⑨ 可用
 --emotion-provider／--judge-provider 切到 openai、ollama 等服務。本機模型一次只載入一個。
@@ -35,7 +36,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from utils import io, paths
-from utils.cli import add_model_arguments, model_config_from_args
+from utils.cli import add_model_arguments, first_given, model_config_from_args
 from utils.emotion import record_key
 from utils.evaluation import idt_metrics, judge_summary, label_distribution
 from utils.inference import (
@@ -48,6 +49,7 @@ from utils.inference import (
     predict_idt,
 )
 from utils.llm import (
+    DEFAULT_EMOTION_MODEL,
     DEFAULT_JUDGE_MODEL,
     DEFAULT_MODEL,
     DEVICE_CHOICES,
@@ -104,8 +106,8 @@ def build_parser() -> argparse.ArgumentParser:
     base = parser.add_argument_group("⑥ IDT 推論：本機基礎模型 + adapter（一定在本機）")
     base.add_argument(
         "--model",
-        default=DEFAULT_MODEL,
-        help="基礎模型（Hugging Face ID 或本機目錄），須與訓練 adapter 時相同",
+        help="基礎模型（Hugging Face ID 或本機目錄），須與訓練 adapter 時相同；"
+        f"預設 utils/llm.py 的 DEFAULT_MODEL（{DEFAULT_MODEL}）。有指定時 ⑦ 也沿用它",
     )
     base.add_argument(
         "--adapter",
@@ -121,11 +123,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     add_model_arguments(
         parser,
-        title="⑦ 情緒推論（預設與 ⑥ 相同的本機模型，不套 adapter）",
+        title="⑦ 情緒推論（不套 adapter；預設與 02 ④ 用同一個模型）",
         prefix="emotion",
-        default_model=None,
         default_max_new_tokens=256,
         local_options=(),
+        model_help="Hugging Face ID、本機目錄，或該 provider 上的模型名；預設沿用 --model，"
+        f"都沒指定就用 utils/llm.py 的 DEFAULT_EMOTION_MODEL（{DEFAULT_EMOTION_MODEL}）",
     )
     judge = add_model_arguments(
         parser,
@@ -143,6 +146,35 @@ def build_parser() -> argparse.ArgumentParser:
         help="被評的欄位：測試集預測用 emotion_pred；評訓練集的模型標註用 emotion_target",
     )
     return parser
+
+
+def model_configs_from_args(
+    args: argparse.Namespace,
+) -> tuple[ModelConfig, ModelConfig, ModelConfig]:
+    """回傳 (⑥ IDT 基礎模型, ⑦ 情緒模型, ⑨ 評審模型) 的設定。
+
+    ⑥ 用 --model，沒給就是 utils/llm.py 的 DEFAULT_MODEL；⑦ 依序取 --emotion-model、--model、
+    DEFAULT_EMOTION_MODEL（與 02 ④ 相同）；device 與 local_files_only 三個模型共用。
+    """
+    idt = ModelConfig(
+        model=first_given(args.model, DEFAULT_MODEL),
+        device=args.device,
+        dtype=args.dtype,
+        max_new_tokens=args.idt_max_new_tokens,
+        local_files_only=args.local_files_only,
+    )
+    emotion = model_config_from_args(
+        args,
+        "emotion",
+        model=first_given(args.emotion_model, args.model, DEFAULT_EMOTION_MODEL),
+        device=args.device,
+        dtype=args.dtype,
+        local_files_only=args.local_files_only,
+    )
+    judge = model_config_from_args(
+        args, "judge", device=args.device, local_files_only=args.local_files_only
+    )
+    return idt, emotion, judge
 
 
 def check_adapter(adapter: Path, model_name: str) -> dict:
@@ -191,24 +223,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     if args.limit is not None and args.limit < 1:
         parser.error("--limit 必須大於 0。")
     try:
-        idt_config = ModelConfig(
-            model=args.model,
-            device=args.device,
-            dtype=args.dtype,
-            max_new_tokens=args.idt_max_new_tokens,
-            local_files_only=args.local_files_only,
-        )
-        emotion_config = model_config_from_args(
-            args,
-            "emotion",
-            model=args.emotion_model or args.model,
-            device=args.device,
-            dtype=args.dtype,
-            local_files_only=args.local_files_only,
-        )
-        judge_config = model_config_from_args(
-            args, "judge", device=args.device, local_files_only=args.local_files_only
-        )
+        idt_config, emotion_config, judge_config = model_configs_from_args(args)
         retry = RetryConfig(max_attempts=args.max_attempts)
         judge_retry = RetryConfig(max_attempts=args.judge_max_attempts)
     except ValueError as exc:
@@ -247,7 +262,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     if merged:
         print(f"疊回既有預測 {merged} 個欄位：{output_path}")
 
-    adapter_info = check_adapter(args.adapter, args.model) if run_idt else None
+    adapter_info = check_adapter(args.adapter, idt_config.model) if run_idt else None
     settings = {
         "stage": args.stage,
         "skip_judge": args.skip_judge,

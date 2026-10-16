@@ -7,9 +7,19 @@ import pytest
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from utils.cli import add_model_arguments, model_config_from_args
+from utils.cli import (
+    LOCAL_OPTIONS,
+    PER_MODEL_LOCAL_OPTIONS,
+    add_model_arguments,
+    model_config_from_args,
+)
 from utils.llm import (
+    DEFAULT_AUGMENT_MODEL,
+    DEFAULT_EMOTION_MODEL,
+    DEFAULT_JUDGE_MODEL,
+    DEFAULT_MODEL,
     PROVIDER_LOCAL,
+    LocalChatModel,
     ModelConfig,
     build_chat_model,
     chat_generate,
@@ -140,3 +150,123 @@ def test_cli_model_arguments_with_and_without_prefix():
     judge = model_config_from_args(args, "judge", device="cuda")
     assert judge.is_local and judge.model == "judge-model" and judge.dtype == "float16"
     assert judge.load_in_4bit and judge.device == "cuda" and judge.max_new_tokens == 50
+
+
+def test_cli_inherit_groups_fall_back_to_shared_config():
+    """02 的用法：不帶前綴的共用選項是預設，--augment-*／--emotion-* 只覆寫有指定的選項。"""
+    parser = argparse.ArgumentParser()
+    add_model_arguments(
+        parser,
+        title="共用",
+        default_model="shared",
+        default_max_new_tokens=100,
+        local_options=LOCAL_OPTIONS,
+    )
+    for prefix in ("augment", "emotion"):
+        add_model_arguments(
+            parser, title=prefix, prefix=prefix, inherit=True, local_options=PER_MODEL_LOCAL_OPTIONS
+        )
+    args = parser.parse_args(
+        [
+            "--dtype",
+            "float16",
+            "--load-in-4bit",
+            "--emotion-provider",
+            "openai",
+            "--emotion-model",
+            "gpt-4o-mini",
+            "--emotion-max-new-tokens",
+            "64",
+        ]
+    )
+    shared = model_config_from_args(args)
+    augment = model_config_from_args(args, "augment", base=shared)
+    emotion = model_config_from_args(args, "emotion", base=shared)
+    assert augment == shared
+    assert augment.model == "shared" and augment.dtype == "float16" and augment.load_in_4bit
+    assert emotion.provider == "openai" and emotion.model == "gpt-4o-mini"
+    assert emotion.max_new_tokens == 64 and emotion.dtype == "float16"  # 沒指定的沿用共用
+    assert shared.same_weights(augment) and not shared.same_weights(emotion)
+    # 沒有共用設定時，inherit 群組沒指定的選項用 ModelConfig 的預設。
+    assert model_config_from_args(parser.parse_args([]), "augment") == ModelConfig()
+
+
+def test_same_weights_ignores_generation_settings_but_not_dtype_or_provider():
+    base = ModelConfig(model="m", dtype="bfloat16", max_new_tokens=1024)
+    assert base.same_weights(ModelConfig(model="m", dtype="bfloat16", max_new_tokens=64))
+    assert base.same_weights(ModelConfig(model="m", dtype="bfloat16", local_files_only=True))
+    assert not base.same_weights(ModelConfig(model="m", dtype="float16"))
+    assert not base.same_weights(ModelConfig(model="m", dtype="bfloat16", load_in_4bit=True))
+    assert not base.same_weights(ModelConfig(model="other", dtype="bfloat16"))
+    assert not base.same_weights(ModelConfig(model="m", dtype="bfloat16", provider="openai"))
+
+
+class _FakeHfModel:
+    def eval(self):
+        return self
+
+
+class _FakeTokenizer:
+    unk_token_id = 0
+
+    def convert_tokens_to_ids(self, token):
+        return 0  # 沒有 <|channel> 之類的 token
+
+
+def test_build_chat_model_share_reuses_weights_only_for_same_model():
+    first = LocalChatModel(
+        settings=ModelConfig(model="base", max_new_tokens=1024),
+        temperature=0.8,
+        device="cpu",
+        dtype="float32",
+        hf_model=_FakeHfModel(),
+        chat_template_source=_FakeTokenizer(),
+    )
+    second = build_chat_model(
+        ModelConfig(model="base", max_new_tokens=64), temperature=0.0, share=first
+    )
+    assert isinstance(second, LocalChatModel) and second.hf_model is first.hf_model
+    assert second.temperature == 0.0 and second.settings.max_new_tokens == 64
+    assert second.device == "cpu" and second.dtype == "float32"
+    with pytest.raises(ValueError, match="不是同一份權重"):
+        build_chat_model(ModelConfig(model="other"), temperature=0.0, share=first)
+
+
+def test_build_features_resolves_stage_models_from_cli_then_llm_defaults(monkeypatch):
+    """02：--augment-model／--emotion-model > --model > llm.py 的 DEFAULT_AUGMENT_MODEL／DEFAULT_EMOTION_MODEL。"""
+    features = importlib.import_module("scripts.02_build_features")
+    parser = features.build_parser()
+    augment, emotion = features.model_configs_from_args(parser.parse_args([]))
+    assert (augment.model, emotion.model) == (DEFAULT_AUGMENT_MODEL, DEFAULT_EMOTION_MODEL)
+    # 兩個常數各自接到對的階段：改 llm.py 的常數就能讓兩階段固定用不同模型。
+    monkeypatch.setattr(features, "DEFAULT_AUGMENT_MODEL", "augment-default")
+    monkeypatch.setattr(features, "DEFAULT_EMOTION_MODEL", "emotion-default")
+    augment, emotion = features.model_configs_from_args(parser.parse_args([]))
+    assert (augment.model, emotion.model) == ("augment-default", "emotion-default")
+    augment, emotion = features.model_configs_from_args(parser.parse_args(["--model", "shared"]))
+    assert augment.model == emotion.model == "shared"
+    augment, emotion = features.model_configs_from_args(
+        parser.parse_args(["--model", "shared", "--emotion-model", "other", "--load-in-4bit"])
+    )
+    assert augment.model == "shared" and emotion.model == "other"
+    assert augment.load_in_4bit and emotion.load_in_4bit  # 沒指定的選項仍沿用共用設定
+
+
+def test_inference_resolves_models_from_cli_then_llm_defaults(monkeypatch):
+    """04：⑥ 用 --model（預設 DEFAULT_MODEL）；⑦ 依序 --emotion-model、--model、DEFAULT_EMOTION_MODEL。"""
+    inference = importlib.import_module("scripts.04_inference")
+    parser = inference.build_parser()
+    monkeypatch.setattr(inference, "DEFAULT_EMOTION_MODEL", "emotion-default")
+    idt, emotion, judge = inference.model_configs_from_args(parser.parse_args([]))
+    assert idt.model == DEFAULT_MODEL and emotion.model == "emotion-default"
+    assert judge.model == DEFAULT_JUDGE_MODEL and idt.is_local and emotion.is_local
+    idt, emotion, _ = inference.model_configs_from_args(
+        parser.parse_args(["--model", "base", "--device", "cpu"])
+    )
+    assert idt.model == emotion.model == "base" and emotion.device == "cpu"  # 試跑時兩邊一起換
+    idt, emotion, _ = inference.model_configs_from_args(
+        parser.parse_args(
+            ["--model", "base", "--emotion-model", "other", "--emotion-provider", "openai"]
+        )
+    )
+    assert idt.model == "base" and emotion.model == "other" and emotion.provider == "openai"

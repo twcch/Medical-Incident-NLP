@@ -31,7 +31,8 @@ docs/                 研究流程圖
 - `--provider huggingface`（預設）：本機 transformers 模型，由 `LocalChatModel` 實作 `BaseChatModel`。不用 `langchain-huggingface` 的 `ChatHuggingFace`，因為它無法關閉 Gemma 4／Qwen 的思考模式、掛 LoRA adapter、控制 seed 或 4-bit 載入。
 - 其他 provider 交給 `langchain.chat_models.init_chat_model`：`--provider openai --model gpt-4o-mini`、`--provider ollama --model qwen3.5:9b`、`--provider anthropic`、`--provider google_genai` 等；OpenAI 相容的本機服務（Ollama、vLLM、LM Studio）用 `--provider openai --base-url http://localhost:11434/v1 --api-key-env 任一有值的變數`。
 - API key 放在專案根目錄的 `.env`（已在 `.gitignore`）或環境變數；`--api-key-env` 可指定變數名。
-- 04 的 ⑥ 要掛 adapter，一定是本機模型；⑦ 用 `--emotion-provider`／`--emotion-model`，⑨ 用 `--judge-provider`／`--judge-model`。
+- 02 的 ③④ 預設模型在 `utils/llm.py` 的 `DEFAULT_AUGMENT_MODEL`／`DEFAULT_EMOTION_MODEL`；執行時 `--provider`／`--model` 同時覆蓋兩階段，`--augment-provider`／`--augment-model` 與 `--emotion-provider`／`--emotion-model` 各自覆蓋（`--augment-*`／`--emotion-*` 沒指定的選項沿用共用設定）。
+- 04 的 ⑥ 要掛 adapter，一定是本機模型；⑦ 預設與 02 ④ 同一個 `DEFAULT_EMOTION_MODEL`（`--model` 有給時沿用它），可用 `--emotion-provider`／`--emotion-model` 覆寫；⑨ 用 `--judge-provider`／`--judge-model`。
 - 03 的 LoRA 訓練直接用 transformers 與 peft，LangChain 沒有訓練介面。
 - 雲端 provider 不保證輸出可重現（多數不支援 seed），進度檔會記錄 provider、模型與端點，換了就要 `--restart`。
 - 事件描述是醫療資料，改用雲端 provider 前先確認資料可以外送。
@@ -79,9 +80,11 @@ python -m scripts.02_build_features --limit 5          # 先試跑 5 筆，輸�
 python -m scripts.02_build_features                    # 全部訓練集
 python -m scripts.02_build_features --stage emotion    # 只重跑情緒標註
 python -m scripts.02_build_features --restart          # 換模型或參數後丟掉舊進度
+python -m scripts.02_build_features --augment-model Qwen/Qwen3.5-9B --emotion-model Qwen/Qwen3.5-4B   # ③④ 用不同模型
+python -m scripts.02_build_features --augment-provider openai --augment-model gpt-4o-mini               # 只有 ③ 走雲端
 ```
 
-只處理訓練集；兩階段共用同一個本機模型（預設 `google/gemma-4-E2B-it`，不套 adapter），載入一次、用完釋放。
+只處理訓練集，不套 adapter。③④ 的模型可以分開設定：預設模型是 `utils/llm.py` 的 `DEFAULT_AUGMENT_MODEL`（③）與 `DEFAULT_EMOTION_MODEL`（④），目前都等於 `DEFAULT_MODEL`（`Qwen/Qwen3.5-9B`），改那兩行就能固定用不同模型。執行時 `--provider`／`--model`／`--max-new-tokens`／`--dtype`／`--load-in-4bit` 等是兩階段共用的覆寫（`--model` 同時蓋掉兩階段的預設）；`--augment-*`（③）與 `--emotion-*`（④）各自覆寫 provider、model、base-url、api-key-env、max-new-tokens、dtype、load-in-4bit，沒指定的選項沿用共用設定；`--device` 與 `--local-files-only` 只有共用的。同一份本機權重只載入一次、兩階段共用（各自的溫度與 token 上限）；③④ 是不同本機模型時依序載入、用完釋放，一次只在記憶體裡一個。`features_summary.json` 的 `augment.model` 與 `emotion.model` 記錄兩階段實際用的模型，進度檔也各自記錄自己的模型。
 
 1. **③ 增生**：每筆以溫度 0.8 產生 `--augment-n`（預設 2）個改寫，每個改寫單獨呼叫一次。改寫必須是合法 JSON、非空、且與原文及所有既有描述都不同；不合格就把原因寫進提示重試，每個改寫最多 `--augment-max-attempts`（預設 4）次。湊不滿時預設保留已取得的版本並記錄缺額，`--augment-on-failure abort` 則中止。改寫沿用原文的人工 IDT 標籤與批示。
 2. **④ 情緒標註**：溫度 0，從十種情緒擇一，清單與定義在 `utils/prompts.py` 的 `EMOTION_LABELS`。輸出無效就把原因寫進提示重試，共 `--emotion-max-attempts`（預設 3）次仍無效就中止，不補「中性」。`emotion_target` 是模型標註，不是人工真值。
@@ -131,7 +134,7 @@ python -m scripts.04_inference --stage judge --predictions data/features/train_f
     --emotion-field emotion_target --out-dir results/train_emotion_judge   # 重評訓練集的模型標註
 ```
 
-對 `test_data.json`：⑥ 載入基礎模型 + `models/idt_adapter/` 預測 `idt_pred`（溫度 0，只接受「個人」或「系統」，基礎模型與訓練時不同會中止）；釋放後 ⑦ 重載原始模型（不套 adapter）以訓練集相同的提示預測 `emotion_pred`；⑧ 比對人工 `idt_target`；⑨ 載入評審模型（預設 `Qwen/Qwen3.5-9B`）只看描述與 `emotion_pred`，三面向各 1 到 5 分（情緒合理性、證據支持、撰寫者視角），總分由程式取平均，附理由。三個模型一次只在記憶體裡一個。輸出無效會把原因寫進提示重試，共 3 次仍無效就記 `null`，不猜標籤；評估時 `null` 算錯誤。每筆都寫進度檔，中斷後重跑續跑，`null` 的那幾筆會再試。
+對 `test_data.json`：⑥ 載入基礎模型 + `models/idt_adapter/` 預測 `idt_pred`（溫度 0，只接受「個人」或「系統」，基礎模型與訓練時不同會中止）；釋放後 ⑦ 載入情緒模型（不套 adapter；預設與 02 ④ 同一個 `DEFAULT_EMOTION_MODEL`，`--model` 或 `--emotion-model` 可覆寫）以訓練集相同的提示預測 `emotion_pred`；⑧ 比對人工 `idt_target`；⑨ 載入評審模型（預設 `Qwen/Qwen3.5-9B`）只看描述與 `emotion_pred`，三面向各 1 到 5 分（情緒合理性、證據支持、撰寫者視角），總分由程式取平均，附理由。三個模型一次只在記憶體裡一個。輸出無效會把原因寫進提示重試，共 3 次仍無效就記 `null`，不猜標籤；評估時 `null` 算錯誤。每筆都寫進度檔，中斷後重跑續跑，`null` 的那幾筆會再試。
 
 輸出到 `results/`：`inference_predictions.json`（每筆加上 `idt_pred`、`emotion_pred`、`emotion_judge`）、`inference_evaluation.json`（IDT 的 accuracy、混淆矩陣（列 = 人工、欄 = 預測）、各類別 precision／recall／F1；情緒的分布與評審平均分）。「系統」類別少，看混淆矩陣與召回率，不要只看 accuracy。情緒沒有人工真值，評審分數是品質分數，不是 accuracy；`emotion_target` 不能當 gold label。
 
@@ -152,3 +155,4 @@ python -m scripts.04_inference --stage judge --predictions data/features/train_f
 - 2026-10-16：完成 03 訓練程式與測試；用 Gemma 4 tokenizer 檢查全部訓練／驗證資料（最長 1,437 token、標籤 3 token、提示為完整序列前綴）；本機以 Qwen2.5-0.5B 試跑 2 epoch 並驗證 `--resume`（輸出 `models/idt_adapter/trial_4/`，供 04 試跑載入用）。
 - 2026-10-16：模型層改用 LangChain 的 chat model 介面（本機 `LocalChatModel` + `init_chat_model` 切換雲端 provider）；開發環境改為 conda `py313`。
 - 2026-10-16：完成 04 推論與評估程式與測試；本機以 Qwen2.5-0.5B 當基礎、adapter 與評審模型試跑 3 筆走完 ⑥⑦⑧⑨、續跑與單獨評審（輸出 `results/trial_3/`，僅供看格式）。
+- 2026-10-16：02 的 ③ 增生與 ④ 情緒標註模型可分開設定（`utils/llm.py` 的 `DEFAULT_AUGMENT_MODEL`／`DEFAULT_EMOTION_MODEL`，執行時 `--augment-*`／`--emotion-*` 覆寫共用的 `--model` 等選項）；同一份權重仍只載入一次，不同模型依序載入。04 ⑦ 的預設也接到 `DEFAULT_EMOTION_MODEL`，與 ④ 同一個模型。

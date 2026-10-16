@@ -24,8 +24,13 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import ConfigDict, Field, PrivateAttr
 
-# 流程圖指定的基礎模型：多模態的 Gemma 4 E2B-it（bf16 約 10 GB），這裡只用文字輸入輸出。
+# 基礎模型：03 訓練 LoRA 與 04 ⑥ IDT 推論一定用它（adapter 必須和基礎模型一致）。只用文字輸入輸出。
 DEFAULT_MODEL = "Qwen/Qwen3.5-9B"
+# 02 ③ 訓練集增生的預設模型，以及 02 ④ 訓練集情緒標註與 04 ⑦ 測試集情緒推論共用的預設模型
+# （④⑦ 同一個模型、同一份提示），都不套 adapter。要固定用不同模型就改這兩行；執行時 --model
+# 會同時蓋掉該 script 用到的所有預設，--augment-model／--emotion-model 只蓋自己那個階段。
+DEFAULT_AUGMENT_MODEL = "Qwen/Qwen3.5-2B"
+DEFAULT_EMOTION_MODEL = "Qwen/Qwen3.5-2B"
 # ⑨ 情緒評審模型；bf16 約 19 GB，12 GB 顯卡需 load_in_4bit（約 6 GB）或改用 Qwen/Qwen3.5-4B。
 DEFAULT_JUDGE_MODEL = "Qwen/Qwen3.8-27B"
 PROVIDER_LOCAL = "huggingface"
@@ -120,11 +125,23 @@ class ModelConfig:
             "model": self.model,
             "max_new_tokens": self.max_new_tokens,
         }
-        if self.load_in_4bit:
-            meta["load_in_4bit"] = True  # 量化會改變輸出
+        if self.is_local and self.load_in_4bit:
+            meta["load_in_4bit"] = True  # 量化會改變輸出；雲端 provider 沒有這回事
         if self.base_url:
             meta["base_url"] = self.base_url
         return meta
+
+    def same_weights(self, other: "ModelConfig") -> bool:
+        """兩個設定是否載入同一份本機權重；是的話可用 build_chat_model 的 share 共用，不必重複載入。
+
+        只比對決定權重的欄位；max_new_tokens 等生成參數不同仍可共用。
+        """
+        if not (self.is_local and other.is_local):
+            return False
+        return all(
+            getattr(self, name) == getattr(other, name)
+            for name in ("model", "device", "dtype", "load_in_4bit")
+        )
 
 
 def resolve_device(choice: str) -> str:
@@ -406,6 +423,13 @@ def build_chat_model(
     if not config.is_local:
         return _init_remote_chat_model(config, temperature)
     if isinstance(share, LocalChatModel):
+        if not share.settings.same_weights(config):
+            raise ValueError(
+                f"share 的模型是 {share.settings.provider}:{share.settings.model}"
+                f"（dtype {share.settings.dtype}、4-bit {share.settings.load_in_4bit}），"
+                f"與要建立的 {config.provider}:{config.model}（dtype {config.dtype}、"
+                f"4-bit {config.load_in_4bit}）不是同一份權重，不能共用。"
+            )
         hf_model, tokenizer = share.hf_model, share.chat_template_source
         device, dtype = share.device, share.dtype
     if hf_model is None:
