@@ -1,4 +1,0 @@
-{"meta": {"provider": "huggingface", "model": "Qwen/Qwen2.5-0.5B-Instruct", "max_new_tokens": 256, "stage": "emotion", "max_attempts": 3, "temperature": 0.0}}
-{"key": "data.csv:3", "fingerprint": "c434ef3e70a2318c", "value": "焦慮", "calls": 1, "failure": null}
-{"key": "data.csv:4", "fingerprint": "7332b75903ce67ca", "value": "焦慮", "calls": 1, "failure": null}
-{"key": "data.csv:8", "fingerprint": "8537ae540823cf0a", "value": "焦慮", "calls": 1, "failure": null}
