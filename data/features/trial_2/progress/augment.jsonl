@@ -1,0 +1,3 @@
+{"meta": {"provider": "huggingface", "model": "Qwen/Qwen2.5-0.5B-Instruct", "max_new_tokens": 300, "stage": "augment", "n": 1, "max_attempts": 2, "temperature": 0.8, "seed": 42}}
+{"key": "data.csv:2", "fingerprint": "3089d393645e4f53", "rewrites": ["護理人員接到病房有重物墜地聲的報告，立即前往探視並發現一名女病人倒在地，情況危急，護士發現病人的右侧後腦勺有一個大小為4x4的出血點。經過初步檢查和治療，血腫量已穩定。患者的GCS評価為E4VAM6，瞳孔大小為2.5+，四肢肌力各為0-3分，沒有任何變化，生命征象基本正常。由于病人失語，无法清晰表达，且与照顾者不在同一場景中，导致沟通困難。"], "calls": 1}
+{"key": "data.csv:5", "fingerprint": "564c17d3671cd0ba", "rewrites": ["護理長巡查病房时发现3202名外籍看護在病室内使用电锅烹饪食物，上次已明确告知不可食用，该看護表示不会再次犯错。此次为明知故犯，因此未收走锅具，并通知雇主直至离开病房为止。"], "calls": 1}

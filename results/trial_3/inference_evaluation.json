@@ -1,0 +1,164 @@
+{
+  "created": "2026-10-16T06:48:01+00:00",
+  "predictions": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/trial_3/inference_predictions.json",
+  "records": 3,
+  "idt": {
+    "records": 3,
+    "correct": 3,
+    "accuracy": 1.0,
+    "invalid_predictions": 0,
+    "macro_f1": 0.5,
+    "confusion_matrix": {
+      "labels": [
+        "個人",
+        "系統"
+      ],
+      "rows": "idt_target（人工）",
+      "cols": "idt_pred（預測）",
+      "matrix": [
+        [
+          3,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "invalid_by_label": {
+        "個人": 0,
+        "系統": 0
+      }
+    },
+    "per_label": {
+      "個人": {
+        "support": 3,
+        "predicted": 3,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "系統": {
+        "support": 0,
+        "predicted": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    }
+  },
+  "emotion": {
+    "field": "emotion_pred",
+    "distribution": {
+      "counts": {
+        "焦慮": 3
+      },
+      "invalid": 0
+    },
+    "judge": {
+      "records": 3,
+      "scored": 3,
+      "unscored": 0,
+      "models": [
+        "huggingface:Qwen/Qwen2.5-0.5B-Instruct"
+      ],
+      "mean_scores": {
+        "plausibility": 4.0,
+        "evidence": 4.3333,
+        "writer_perspective": 5.0
+      },
+      "mean_overall_score": 4.4447,
+      "overall_distribution": {
+        "4": 1,
+        "5": 2
+      }
+    }
+  },
+  "settings": {
+    "stage": "all",
+    "skip_judge": false,
+    "input": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/data/processed_data/test_data.json",
+    "records_in": 3,
+    "limit": 3,
+    "out_dir": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/trial_3",
+    "adapter": {
+      "path": "models/idt_adapter/trial_4",
+      "base_model": "Qwen/Qwen2.5-0.5B-Instruct"
+    },
+    "idt_model": {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "provider": "huggingface",
+      "device": "auto",
+      "dtype": "float32",
+      "max_new_tokens": 16,
+      "local_files_only": false,
+      "load_in_4bit": false,
+      "base_url": null,
+      "api_key_env": null
+    },
+    "emotion_model": {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "provider": "huggingface",
+      "device": "auto",
+      "dtype": "float32",
+      "max_new_tokens": 256,
+      "local_files_only": false,
+      "load_in_4bit": false,
+      "base_url": null,
+      "api_key_env": null
+    },
+    "retry": {
+      "max_attempts": 3,
+      "temperature": 0.0
+    },
+    "judge": {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "provider": "huggingface",
+      "device": "auto",
+      "dtype": "float32",
+      "max_new_tokens": 512,
+      "local_files_only": false,
+      "load_in_4bit": false,
+      "base_url": null,
+      "api_key_env": null,
+      "retry": {
+        "max_attempts": 3,
+        "temperature": 0.0
+      },
+      "emotion_field": "emotion_pred"
+    }
+  },
+  "reports": {
+    "idt": {
+      "stage": "idt",
+      "records": 3,
+      "reused_from_progress": 3,
+      "model_calls": 0,
+      "failed": [],
+      "counts": {
+        "個人": 3
+      }
+    },
+    "emotion": {
+      "stage": "emotion",
+      "records": 3,
+      "reused_from_progress": 3,
+      "model_calls": 0,
+      "failed": [],
+      "counts": {
+        "焦慮": 3
+      }
+    },
+    "judge": {
+      "stage": "judge",
+      "records": 3,
+      "reused_from_progress": 3,
+      "model_calls": 0,
+      "failed": [],
+      "counts": {
+        "總分≈5": 2,
+        "總分≈4": 1
+      }
+    }
+  }
+}

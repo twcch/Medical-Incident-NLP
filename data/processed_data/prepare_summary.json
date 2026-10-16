@@ -1,0 +1,51 @@
+{
+  "clean": {
+    "source": "data.csv",
+    "input_rows": 3288,
+    "dropped": {
+      "idt_blank": 0,
+      "idt_invalid": 0,
+      "description_blank": 0,
+      "duplicate": 0
+    },
+    "output_rows": 3288,
+    "label_counts": {
+      "個人": 2976,
+      "系統": 312
+    }
+  },
+  "split": {
+    "ratio": [
+      0.7,
+      0.1,
+      0.2
+    ],
+    "seed": 42,
+    "sets": {
+      "train": {
+        "file": "train_data.json",
+        "rows": 2302,
+        "label_counts": {
+          "個人": 2083,
+          "系統": 219
+        }
+      },
+      "val": {
+        "file": "val_data.json",
+        "rows": 329,
+        "label_counts": {
+          "個人": 298,
+          "系統": 31
+        }
+      },
+      "test": {
+        "file": "test_data.json",
+        "rows": 657,
+        "label_counts": {
+          "個人": 595,
+          "系統": 62
+        }
+      }
+    }
+  }
+}
