@@ -2,3 +2,7 @@ _old/
 .env
 AGENTS.md
 CLAUDE.md
+
+# Python 編譯快取：各機器自行產生，不進版本庫
+__pycache__/
+*.pyc
