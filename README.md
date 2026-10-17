@@ -19,6 +19,7 @@ docs/                 研究流程圖
 ## 環境與執行方式
 
 - Python 3.13，conda 環境 `py313`（Mac 與 Windows 同名）。
+- 安裝：先依平台裝 CUDA 版的 torch，再 `pip install -r requirements.txt`；選用的套件（bitsandbytes、其他 provider 的 LangChain 整合）在檔案裡註解掉，需要時再裝。
 - 一律在專案根目錄用 `python -m scripts.<名稱>` 執行。直接 `python scripts/xxx.py` 會找不到 `utils`。
 - 02 之後需要 `torch`、`transformers`（Gemma 4 需 ≥ 5.5）、`accelerate`、`langchain`、`langchain-core`；03 另需 `peft`。只送文字，不需要影像／音訊套件。
 - 雲端或自架服務另裝對應的 LangChain 整合套件：`langchain-openai`（已裝）、`langchain-ollama`、`langchain-anthropic`、`langchain-google-genai`。

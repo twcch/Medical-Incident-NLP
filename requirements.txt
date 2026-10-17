@@ -1,0 +1,30 @@
+# Medical-Incident-NLP 相依套件（Python 3.13，conda 環境 py313）
+#
+# 安裝：pip install -r requirements.txt
+# torch 請先依平台裝 CUDA 版（https://pytorch.org/get-started/locally/），例如
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+# 再執行上面的指令；下限之後的註解是 2026-10-17 在 Mac py313 實測可用的版本。
+
+# 模型：02 增生與情緒標註、03 LoRA 訓練、04 推論與評審
+torch>=2.6                 # 實測 2.14.0
+transformers>=5.5          # 實測 5.20.0；Gemma 4 與 Qwen3.5 的多模態模型類別需要 5.5 以上
+accelerate>=1.0            # 實測 1.15.0；device_map 與 4-bit 載入需要
+peft>=0.18                 # 實測 0.21.2；03 的 LoRA 與 04 載入 adapter
+safetensors>=0.5           # 實測 0.8.0
+
+# LangChain chat model 介面（utils/llm.py）
+langchain>=1.0             # 實測 1.4.3；init_chat_model
+langchain-core>=1.0        # 實測 1.6.6
+langchain-openai>=1.0      # 實測 1.6.6；OpenAI 與相容服務（Ollama、vLLM、LM Studio），測試也會用到
+pydantic>=2.0              # 實測 2.13.5
+python-dotenv>=1.0         # 實測 1.2.3；從 .env 讀 API key
+
+# 測試與格式
+pytest>=8.0                # 實測 9.1.1；python -m pytest tests
+ruff>=0.9                  # 實測 0.16.2；ruff format --line-length 100
+
+# 選用，需要時再裝
+# bitsandbytes>=0.45       # --load-in-4bit 用 nf4 載入；只支援 CUDA，Mac 裝不了
+# langchain-ollama         # --provider ollama
+# langchain-anthropic      # --provider anthropic
+# langchain-google-genai   # --provider google_genai
