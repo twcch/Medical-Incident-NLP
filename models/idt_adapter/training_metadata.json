@@ -1,0 +1,98 @@
+{
+  "base_model": "Qwen/Qwen3.5-9B",
+  "idt_prompt": "ad7f88a90790f986",
+  "created": "2026-10-17T21:31:25+00:00",
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "data": {
+    "train_features": "/workspace/Medical-Incident-NLP/data/features/train_features.json",
+    "train_records": 6906,
+    "train_label_counts": {
+      "個人": 6249,
+      "系統": 657
+    },
+    "val_data": "/workspace/Medical-Incident-NLP/data/processed_data/val_data.json",
+    "val_records": 329,
+    "val_label_counts": {
+      "個人": 298,
+      "系統": 31
+    },
+    "limit": null,
+    "token_lengths": {
+      "train": {
+        "count": 6906,
+        "min": 1323,
+        "mean": 1421.0,
+        "p95": 1580,
+        "max": 2579,
+        "label_tokens": [
+          3
+        ]
+      },
+      "val": {
+        "count": 329,
+        "min": 1328,
+        "mean": 1420.4,
+        "p95": 1586,
+        "max": 1945,
+        "label_tokens": [
+          3
+        ]
+      }
+    }
+  },
+  "seed": 42,
+  "training": {
+    "epochs": 3,
+    "gradient_accumulation_steps": 8,
+    "learning_rate": 0.0002,
+    "max_length": 4096,
+    "warmup_ratio": 0.03,
+    "weight_decay": 0.0,
+    "max_grad_norm": 1.0,
+    "lora_rank": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "target_modules": ".*language_model\\..*\\.(q_proj|v_proj)",
+    "gradient_checkpointing": true,
+    "log_every": 10
+  },
+  "lora": {
+    "matched_modules": 16,
+    "examples": [
+      "model.language_model.layers.3.self_attn.q_proj",
+      "model.language_model.layers.3.self_attn.v_proj",
+      "model.language_model.layers.7.self_attn.q_proj",
+      "model.language_model.layers.7.self_attn.v_proj"
+    ],
+    "trainable_params": 1114112,
+    "total_params": 9410927856
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.07652717528641836,
+      "val_loss": 0.07360946232365824,
+      "val_label_match": 0.9088145896656535,
+      "global_step": 864,
+      "seconds": 25470.6
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.05683397714375367,
+      "val_loss": 0.10180081378723628,
+      "val_label_match": 0.9057750759878419,
+      "global_step": 1728,
+      "seconds": 25472.8
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.03363460805547114,
+      "val_loss": 0.12530297927063244,
+      "val_label_match": 0.9118541033434651,
+      "global_step": 2592,
+      "seconds": 25468.4
+    }
+  ],
+  "duration_minutes": 1277.8
+}
