@@ -1,0 +1,188 @@
+{
+  "created": "2026-10-18T03:22:32+00:00",
+  "predictions": "/workspace/Medical-Incident-NLP/results/inference_predictions.json",
+  "records": 657,
+  "idt": {
+    "records": 657,
+    "correct": 605,
+    "accuracy": 0.9209,
+    "invalid_predictions": 0,
+    "macro_f1": 0.7377,
+    "confusion_matrix": {
+      "labels": [
+        "個人",
+        "系統"
+      ],
+      "rows": "idt_target（人工）",
+      "cols": "idt_pred（預測）",
+      "matrix": [
+        [
+          577,
+          18
+        ],
+        [
+          34,
+          28
+        ]
+      ],
+      "invalid_by_label": {
+        "個人": 0,
+        "系統": 0
+      }
+    },
+    "per_label": {
+      "個人": {
+        "support": 595,
+        "predicted": 611,
+        "precision": 0.9444,
+        "recall": 0.9697,
+        "f1": 0.9569
+      },
+      "系統": {
+        "support": 62,
+        "predicted": 46,
+        "precision": 0.6087,
+        "recall": 0.4516,
+        "f1": 0.5185
+      }
+    }
+  },
+  "emotion": {
+    "field": "emotion_pred",
+    "distribution": {
+      "counts": {
+        "中性": 385,
+        "困惑": 106,
+        "警覺": 64,
+        "焦慮": 44,
+        "憤怒": 34,
+        "無奈": 16,
+        "驚慌": 5,
+        "沮喪": 2,
+        "自責": 1
+      },
+      "invalid": 0
+    },
+    "judge": {
+      "records": 657,
+      "scored": 657,
+      "unscored": 0,
+      "models": [
+        "huggingface:Qwen/Qwen3.8-27B"
+      ],
+      "mean_scores": {
+        "emotion_plausibility": 4.3196,
+        "evidence_support": 4.0616,
+        "writer_perspective": 4.2139
+      },
+      "mean_overall_score": 4.1984,
+      "overall_distribution": {
+        "1": 3,
+        "2": 105,
+        "3": 18,
+        "4": 142,
+        "5": 389
+      }
+    }
+  },
+  "settings": {
+    "stage": "all",
+    "skip_judge": false,
+    "input": "/workspace/Medical-Incident-NLP/data/processed_data/test_data.json",
+    "records_in": 657,
+    "limit": null,
+    "out_dir": "/workspace/Medical-Incident-NLP/results",
+    "adapter": {
+      "path": "/workspace/Medical-Incident-NLP/models/idt_adapter",
+      "base_model": "Qwen/Qwen3.5-9B",
+      "idt_prompt": "ad7f88a90790f986"
+    },
+    "idt_model": {
+      "model": "Qwen/Qwen3.5-9B",
+      "provider": "huggingface",
+      "device": "auto",
+      "dtype": "auto",
+      "max_new_tokens": 16,
+      "local_files_only": false,
+      "load_in_4bit": false,
+      "base_url": null,
+      "api_key_env": null
+    },
+    "emotion_model": {
+      "model": "Qwen/Qwen3.5-2B",
+      "provider": "huggingface",
+      "device": "auto",
+      "dtype": "auto",
+      "max_new_tokens": 256,
+      "local_files_only": false,
+      "load_in_4bit": false,
+      "base_url": null,
+      "api_key_env": null
+    },
+    "retry": {
+      "max_attempts": 3,
+      "temperature": 0.0
+    },
+    "judge": {
+      "model": "Qwen/Qwen3.8-27B",
+      "provider": "huggingface",
+      "device": "auto",
+      "dtype": "auto",
+      "max_new_tokens": 512,
+      "local_files_only": false,
+      "load_in_4bit": false,
+      "base_url": null,
+      "api_key_env": null,
+      "retry": {
+        "max_attempts": 3,
+        "temperature": 0.0
+      },
+      "emotion_field": "emotion_pred"
+    }
+  },
+  "reports": {
+    "idt": {
+      "stage": "idt",
+      "records": 657,
+      "reused_from_progress": 0,
+      "model_calls": 657,
+      "failed": [],
+      "counts": {
+        "個人": 611,
+        "系統": 46
+      }
+    },
+    "emotion": {
+      "stage": "emotion",
+      "records": 657,
+      "reused_from_progress": 0,
+      "model_calls": 657,
+      "failed": [],
+      "counts": {
+        "中性": 385,
+        "困惑": 106,
+        "警覺": 64,
+        "憤怒": 34,
+        "無奈": 16,
+        "焦慮": 44,
+        "沮喪": 2,
+        "驚慌": 5,
+        "自責": 1
+      }
+    },
+    "judge": {
+      "stage": "judge",
+      "records": 657,
+      "reused_from_progress": 0,
+      "model_calls": 657,
+      "failed": [],
+      "counts": {
+        "總分≈5": 389,
+        "總分≈2": 105,
+        "總分≈4": 142,
+        "總分≈3": 18,
+        "總分≈1": 3
+      }
+    }
+  }
+}
