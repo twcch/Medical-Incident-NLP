@@ -21,6 +21,9 @@ python-dotenv>=1.0         # 實測 1.2.3；從 .env 讀 API key
 
 # 測試與格式
 pytest>=8.0                # 實測 9.1.1；python -m pytest tests
+
+# 05 IDT 機率評分的 TF-IDF 基準（只有 evaluate 用到；加 --no-baseline 可不裝）
+scikit-learn>=1.5          # 2026-11-20 在 conda py311_ds 實測 1.9.1
 ruff>=0.9                  # 實測 0.16.2；ruff format --line-length 100
 
 # 選用，需要時再裝

@@ -1,0 +1,895 @@
+{
+  "created": "2026-11-20T02:20:15+00:00",
+  "settings": {
+    "stage": "all",
+    "limit": 40,
+    "out_dir": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/trial_40",
+    "data": {
+      "val": {
+        "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/data/processed_data/val_data.json",
+        "records": 40,
+        "label_counts": {
+          "個人": 36,
+          "系統": 4
+        }
+      },
+      "test": {
+        "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/data/processed_data/test_data.json",
+        "records": 40,
+        "label_counts": {
+          "個人": 38,
+          "系統": 2
+        }
+      }
+    },
+    "model": {
+      "model": "Qwen/Qwen3.5-9B",
+      "provider": "huggingface",
+      "device": "auto",
+      "dtype": "auto",
+      "max_new_tokens": 1024,
+      "local_files_only": false,
+      "load_in_4bit": false,
+      "base_url": null,
+      "api_key_env": null
+    },
+    "method": "first-token-logit",
+    "idt_prompt": "ad7f88a90790f986",
+    "configs": [
+      {
+        "name": "zero-shot",
+        "adapter": null
+      },
+      {
+        "name": "epoch-1",
+        "adapter": {
+          "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-1",
+          "base_model": "Qwen/Qwen3.5-9B",
+          "idt_prompt": "ad7f88a90790f986",
+          "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
+          "sha256": "110cda4a176c0fd120db955ad2e67a7d2347468c1c9285def1e41b0e3ff49194"
+        }
+      },
+      {
+        "name": "epoch-2",
+        "adapter": {
+          "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-2",
+          "base_model": "Qwen/Qwen3.5-9B",
+          "idt_prompt": "ad7f88a90790f986",
+          "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
+          "sha256": "e2d45676acb99d9d0b0c5b9807809add3aec0266f63a979b97a588983b494c79"
+        }
+      },
+      {
+        "name": "epoch-3",
+        "adapter": {
+          "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-3",
+          "base_model": "Qwen/Qwen3.5-9B",
+          "idt_prompt": "ad7f88a90790f986",
+          "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
+          "sha256": "060d1f8939b43647ba8e43a573d6f526aa983c8b15c717fe47ebbdcd801dbda0"
+        }
+      }
+    ],
+    "baseline": {
+      "name": "tfidf",
+      "train_data": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/data/processed_data/train_data.json",
+      "vectorizer": {
+        "analyzer": "char",
+        "ngram_range": [
+          1,
+          3
+        ],
+        "min_df": 2,
+        "sublinear_tf": true
+      },
+      "classifier": {
+        "C": 10.0,
+        "class_weight": "balanced",
+        "max_iter": 5000
+      }
+    },
+    "bootstrap": 2000,
+    "seed": 42,
+    "scored_configs": [
+      {
+        "name": "zero-shot",
+        "adapter": null
+      },
+      {
+        "name": "epoch-1",
+        "adapter": {
+          "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-1",
+          "base_model": "Qwen/Qwen3.5-9B",
+          "idt_prompt": "ad7f88a90790f986",
+          "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
+          "sha256": "110cda4a176c0fd120db955ad2e67a7d2347468c1c9285def1e41b0e3ff49194"
+        }
+      },
+      {
+        "name": "epoch-2",
+        "adapter": {
+          "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-2",
+          "base_model": "Qwen/Qwen3.5-9B",
+          "idt_prompt": "ad7f88a90790f986",
+          "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
+          "sha256": "e2d45676acb99d9d0b0c5b9807809add3aec0266f63a979b97a588983b494c79"
+        }
+      },
+      {
+        "name": "epoch-3",
+        "adapter": {
+          "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-3",
+          "base_model": "Qwen/Qwen3.5-9B",
+          "idt_prompt": "ad7f88a90790f986",
+          "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
+          "sha256": "060d1f8939b43647ba8e43a573d6f526aa983c8b15c717fe47ebbdcd801dbda0"
+        }
+      }
+    ],
+    "reference": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/inference_predictions.json"
+  },
+  "label_tokens": {
+    "個人": 100117,
+    "系統": 103952
+  },
+  "diagnostics": {
+    "zero-shot": {
+      "label_mass_mean": 0.9881,
+      "top_is_label_rate": 1.0
+    },
+    "epoch-1": {
+      "label_mass_mean": 0.9992,
+      "top_is_label_rate": 1.0
+    },
+    "epoch-2": {
+      "label_mass_mean": 0.9997,
+      "top_is_label_rate": 1.0
+    },
+    "epoch-3": {
+      "label_mass_mean": 0.9999,
+      "top_is_label_rate": 1.0
+    }
+  },
+  "configs": {
+    "zero-shot": {
+      "val": {
+        "log_loss": 0.3624,
+        "auroc": 0.6319,
+        "ap": 0.1912
+      },
+      "test": {
+        "log_loss": 0.2996,
+        "auroc": 0.6513,
+        "ap": 0.1233
+      },
+      "threshold": {
+        "value": 0.32143005655306467,
+        "val_macro_f1": 0.6311,
+        "note": null
+      },
+      "test_at_0.5": {
+        "records": 40,
+        "correct": 37,
+        "accuracy": 0.925,
+        "invalid_predictions": 0,
+        "macro_f1": 0.4805,
+        "confusion_matrix": {
+          "labels": [
+            "個人",
+            "系統"
+          ],
+          "rows": "idt_target（人工）",
+          "cols": "idt_pred（預測）",
+          "matrix": [
+            [
+              37,
+              1
+            ],
+            [
+              2,
+              0
+            ]
+          ],
+          "invalid_by_label": {
+            "個人": 0,
+            "系統": 0
+          }
+        },
+        "per_label": {
+          "個人": {
+            "support": 38,
+            "predicted": 39,
+            "precision": 0.9487,
+            "recall": 0.9737,
+            "f1": 0.961
+          },
+          "系統": {
+            "support": 2,
+            "predicted": 1,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          }
+        }
+      },
+      "test_at_threshold": {
+        "records": 40,
+        "correct": 34,
+        "accuracy": 0.85,
+        "invalid_predictions": 0,
+        "macro_f1": 0.5834,
+        "confusion_matrix": {
+          "labels": [
+            "個人",
+            "系統"
+          ],
+          "rows": "idt_target（人工）",
+          "cols": "idt_pred（預測）",
+          "matrix": [
+            [
+              33,
+              5
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          "invalid_by_label": {
+            "個人": 0,
+            "系統": 0
+          }
+        },
+        "per_label": {
+          "個人": {
+            "support": 38,
+            "predicted": 34,
+            "precision": 0.9706,
+            "recall": 0.8684,
+            "f1": 0.9167
+          },
+          "系統": {
+            "support": 2,
+            "predicted": 6,
+            "precision": 0.1667,
+            "recall": 0.5,
+            "f1": 0.25
+          }
+        }
+      },
+      "agreement_with_reference": {
+        "matched": 36,
+        "compared": 40
+      }
+    },
+    "epoch-1": {
+      "val": {
+        "log_loss": 0.273,
+        "auroc": 0.8333,
+        "ap": 0.284
+      },
+      "test": {
+        "log_loss": 0.1103,
+        "auroc": 0.9737,
+        "ap": 0.5833
+      },
+      "threshold": {
+        "value": 0.08064531818509774,
+        "val_macro_f1": 0.7128,
+        "note": null
+      },
+      "test_at_0.5": {
+        "records": 40,
+        "correct": 38,
+        "accuracy": 0.95,
+        "invalid_predictions": 0,
+        "macro_f1": 0.7369,
+        "confusion_matrix": {
+          "labels": [
+            "個人",
+            "系統"
+          ],
+          "rows": "idt_target（人工）",
+          "cols": "idt_pred（預測）",
+          "matrix": [
+            [
+              37,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          "invalid_by_label": {
+            "個人": 0,
+            "系統": 0
+          }
+        },
+        "per_label": {
+          "個人": {
+            "support": 38,
+            "predicted": 38,
+            "precision": 0.9737,
+            "recall": 0.9737,
+            "f1": 0.9737
+          },
+          "系統": {
+            "support": 2,
+            "predicted": 2,
+            "precision": 0.5,
+            "recall": 0.5,
+            "f1": 0.5
+          }
+        }
+      },
+      "test_at_threshold": {
+        "records": 40,
+        "correct": 32,
+        "accuracy": 0.8,
+        "invalid_predictions": 0,
+        "macro_f1": 0.6079,
+        "confusion_matrix": {
+          "labels": [
+            "個人",
+            "系統"
+          ],
+          "rows": "idt_target（人工）",
+          "cols": "idt_pred（預測）",
+          "matrix": [
+            [
+              30,
+              8
+            ],
+            [
+              0,
+              2
+            ]
+          ],
+          "invalid_by_label": {
+            "個人": 0,
+            "系統": 0
+          }
+        },
+        "per_label": {
+          "個人": {
+            "support": 38,
+            "predicted": 30,
+            "precision": 1.0,
+            "recall": 0.7895,
+            "f1": 0.8824
+          },
+          "系統": {
+            "support": 2,
+            "predicted": 10,
+            "precision": 0.2,
+            "recall": 1.0,
+            "f1": 0.3333
+          }
+        }
+      },
+      "agreement_with_reference": {
+        "matched": 39,
+        "compared": 40
+      }
+    },
+    "epoch-2": {
+      "val": {
+        "log_loss": 0.4619,
+        "auroc": 0.8403,
+        "ap": 0.2973
+      },
+      "test": {
+        "log_loss": 0.1181,
+        "auroc": 0.9474,
+        "ap": 0.45
+      },
+      "threshold": {
+        "value": 0.0033831429434454884,
+        "val_macro_f1": 0.6875,
+        "note": null
+      },
+      "test_at_0.5": {
+        "records": 40,
+        "correct": 38,
+        "accuracy": 0.95,
+        "invalid_predictions": 0,
+        "macro_f1": 0.4872,
+        "confusion_matrix": {
+          "labels": [
+            "個人",
+            "系統"
+          ],
+          "rows": "idt_target（人工）",
+          "cols": "idt_pred（預測）",
+          "matrix": [
+            [
+              38,
+              0
+            ],
+            [
+              2,
+              0
+            ]
+          ],
+          "invalid_by_label": {
+            "個人": 0,
+            "系統": 0
+          }
+        },
+        "per_label": {
+          "個人": {
+            "support": 38,
+            "predicted": 40,
+            "precision": 0.95,
+            "recall": 1.0,
+            "f1": 0.9744
+          },
+          "系統": {
+            "support": 2,
+            "predicted": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          }
+        }
+      },
+      "test_at_threshold": {
+        "records": 40,
+        "correct": 29,
+        "accuracy": 0.725,
+        "invalid_predictions": 0,
+        "macro_f1": 0.5487,
+        "confusion_matrix": {
+          "labels": [
+            "個人",
+            "系統"
+          ],
+          "rows": "idt_target（人工）",
+          "cols": "idt_pred（預測）",
+          "matrix": [
+            [
+              27,
+              11
+            ],
+            [
+              0,
+              2
+            ]
+          ],
+          "invalid_by_label": {
+            "個人": 0,
+            "系統": 0
+          }
+        },
+        "per_label": {
+          "個人": {
+            "support": 38,
+            "predicted": 27,
+            "precision": 1.0,
+            "recall": 0.7105,
+            "f1": 0.8308
+          },
+          "系統": {
+            "support": 2,
+            "predicted": 13,
+            "precision": 0.1538,
+            "recall": 1.0,
+            "f1": 0.2666
+          }
+        }
+      },
+      "agreement_with_reference": {
+        "matched": 37,
+        "compared": 40
+      }
+    },
+    "epoch-3": {
+      "val": {
+        "log_loss": 0.6644,
+        "auroc": 0.8264,
+        "ap": 0.2964
+      },
+      "test": {
+        "log_loss": 0.2129,
+        "auroc": 0.9079,
+        "ap": 0.3095
+      },
+      "threshold": {
+        "value": 0.0035936031337424285,
+        "val_macro_f1": 0.6537,
+        "note": null
+      },
+      "test_at_0.5": {
+        "records": 40,
+        "correct": 36,
+        "accuracy": 0.9,
+        "invalid_predictions": 0,
+        "macro_f1": 0.4737,
+        "confusion_matrix": {
+          "labels": [
+            "個人",
+            "系統"
+          ],
+          "rows": "idt_target（人工）",
+          "cols": "idt_pred（預測）",
+          "matrix": [
+            [
+              36,
+              2
+            ],
+            [
+              2,
+              0
+            ]
+          ],
+          "invalid_by_label": {
+            "個人": 0,
+            "系統": 0
+          }
+        },
+        "per_label": {
+          "個人": {
+            "support": 38,
+            "predicted": 38,
+            "precision": 0.9474,
+            "recall": 0.9474,
+            "f1": 0.9474
+          },
+          "系統": {
+            "support": 2,
+            "predicted": 2,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          }
+        }
+      },
+      "test_at_threshold": {
+        "records": 40,
+        "correct": 29,
+        "accuracy": 0.725,
+        "invalid_predictions": 0,
+        "macro_f1": 0.5487,
+        "confusion_matrix": {
+          "labels": [
+            "個人",
+            "系統"
+          ],
+          "rows": "idt_target（人工）",
+          "cols": "idt_pred（預測）",
+          "matrix": [
+            [
+              27,
+              11
+            ],
+            [
+              0,
+              2
+            ]
+          ],
+          "invalid_by_label": {
+            "個人": 0,
+            "系統": 0
+          }
+        },
+        "per_label": {
+          "個人": {
+            "support": 38,
+            "predicted": 27,
+            "precision": 1.0,
+            "recall": 0.7105,
+            "f1": 0.8308
+          },
+          "系統": {
+            "support": 2,
+            "predicted": 13,
+            "precision": 0.1538,
+            "recall": 1.0,
+            "f1": 0.2666
+          }
+        }
+      },
+      "agreement_with_reference": {
+        "matched": 39,
+        "compared": 40
+      }
+    },
+    "tfidf": {
+      "val": {
+        "log_loss": 0.267,
+        "auroc": 0.8889,
+        "ap": 0.3771
+      },
+      "test": {
+        "log_loss": 0.2085,
+        "auroc": 0.9211,
+        "ap": 0.625
+      },
+      "threshold": {
+        "value": 0.2197804254211732,
+        "val_macro_f1": 0.7403,
+        "note": null
+      },
+      "test_at_0.5": {
+        "records": 40,
+        "correct": 36,
+        "accuracy": 0.9,
+        "invalid_predictions": 0,
+        "macro_f1": 0.6396,
+        "confusion_matrix": {
+          "labels": [
+            "個人",
+            "系統"
+          ],
+          "rows": "idt_target（人工）",
+          "cols": "idt_pred（預測）",
+          "matrix": [
+            [
+              35,
+              3
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          "invalid_by_label": {
+            "個人": 0,
+            "系統": 0
+          }
+        },
+        "per_label": {
+          "個人": {
+            "support": 38,
+            "predicted": 36,
+            "precision": 0.9722,
+            "recall": 0.9211,
+            "f1": 0.946
+          },
+          "系統": {
+            "support": 2,
+            "predicted": 4,
+            "precision": 0.25,
+            "recall": 0.5,
+            "f1": 0.3333
+          }
+        }
+      },
+      "test_at_threshold": {
+        "records": 40,
+        "correct": 33,
+        "accuracy": 0.825,
+        "invalid_predictions": 0,
+        "macro_f1": 0.6311,
+        "confusion_matrix": {
+          "labels": [
+            "個人",
+            "系統"
+          ],
+          "rows": "idt_target（人工）",
+          "cols": "idt_pred（預測）",
+          "matrix": [
+            [
+              31,
+              7
+            ],
+            [
+              0,
+              2
+            ]
+          ],
+          "invalid_by_label": {
+            "個人": 0,
+            "系統": 0
+          }
+        },
+        "per_label": {
+          "個人": {
+            "support": 38,
+            "predicted": 31,
+            "precision": 1.0,
+            "recall": 0.8158,
+            "f1": 0.8986
+          },
+          "系統": {
+            "support": 2,
+            "predicted": 9,
+            "precision": 0.2222,
+            "recall": 1.0,
+            "f1": 0.3636
+          }
+        }
+      },
+      "agreement_with_reference": {
+        "matched": 35,
+        "compared": 40
+      }
+    }
+  },
+  "selected": {
+    "config": "epoch-1",
+    "criterion": "只在訓練出的 checkpoint 中挑驗證集 log-loss 最低的",
+    "val_log_loss": 0.273
+  },
+  "bootstrap": {
+    "resamples": 2000,
+    "seed": 42,
+    "confidence": 0.95,
+    "baseline": "tfidf",
+    "operating_point": "門檻相關指標用各設定在驗證集調出的門檻",
+    "intervals": {
+      "zero-shot": {
+        "macro_f1": [
+          0.4286,
+          0.8198
+        ],
+        "system_precision": [
+          0.0,
+          0.6
+        ],
+        "system_recall": [
+          0.0,
+          1.0
+        ],
+        "system_f1": [
+          0.0,
+          0.6667
+        ],
+        "auroc": [
+          0.3333,
+          0.9231
+        ],
+        "ap": [
+          0.0357,
+          0.5
+        ],
+        "vs_baseline": {
+          "macro_f1": [
+            -0.284,
+            0.1553
+          ],
+          "auroc": [
+            -0.6667,
+            0.1131
+          ]
+        }
+      },
+      "epoch-1": {
+        "macro_f1": [
+          0.4805,
+          0.8039
+        ],
+        "system_precision": [
+          0.0769,
+          0.5
+        ],
+        "system_recall": [
+          1.0,
+          1.0
+        ],
+        "system_f1": [
+          0.1429,
+          0.6667
+        ],
+        "auroc": [
+          0.9189,
+          1.0
+        ],
+        "ap": [
+          0.25,
+          1.0
+        ],
+        "vs_baseline": {
+          "macro_f1": [
+            -0.1363,
+            0.0829
+          ],
+          "auroc": [
+            -0.0556,
+            0.2051
+          ]
+        }
+      },
+      "epoch-2": {
+        "macro_f1": [
+          0.4357,
+          0.7365
+        ],
+        "system_precision": [
+          0.0625,
+          0.4
+        ],
+        "system_recall": [
+          1.0,
+          1.0
+        ],
+        "system_f1": [
+          0.1176,
+          0.5714
+        ],
+        "auroc": [
+          0.8649,
+          1.0
+        ],
+        "ap": [
+          0.1667,
+          1.0
+        ],
+        "vs_baseline": {
+          "macro_f1": [
+            -0.2177,
+            0.0309
+          ],
+          "auroc": [
+            -0.1316,
+            0.2051
+          ]
+        }
+      },
+      "epoch-3": {
+        "macro_f1": [
+          0.4357,
+          0.7365
+        ],
+        "system_precision": [
+          0.0625,
+          0.4
+        ],
+        "system_recall": [
+          1.0,
+          1.0
+        ],
+        "system_f1": [
+          0.1176,
+          0.5714
+        ],
+        "auroc": [
+          0.7838,
+          1.0
+        ],
+        "ap": [
+          0.125,
+          1.0
+        ],
+        "vs_baseline": {
+          "macro_f1": [
+            -0.2177,
+            0.0309
+          ],
+          "auroc": [
+            -0.2105,
+            0.1798
+          ]
+        }
+      },
+      "tfidf": {
+        "macro_f1": [
+          0.4948,
+          0.8268
+        ],
+        "system_precision": [
+          0.0833,
+          0.5556
+        ],
+        "system_recall": [
+          1.0,
+          1.0
+        ],
+        "system_f1": [
+          0.1538,
+          0.7143
+        ],
+        "auroc": [
+          0.7677,
+          1.0
+        ],
+        "ap": [
+          0.1111,
+          1.0
+        ]
+      }
+    }
+  }
+}

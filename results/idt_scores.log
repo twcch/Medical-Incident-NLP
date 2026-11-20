@@ -1,0 +1,129 @@
+val 329 筆（個人 298／系統 31）
+test 657 筆（個人 595／系統 62）
+標籤 token：{'個人': 100117, '系統': 103952}（tokenizer：/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter）
+=== 載入模型：Qwen/Qwen3.5-9B ===
+W1120 10:20:51.656000 23332 site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Loading weights:   0%|          | 0/760 [00:00<?, ?it/s]Loading weights: 100%|██████████| 760/760 [00:00<00:00, 12592.77it/s]
+裝置 mps、精度 bfloat16，16 秒；adapter：epoch-1、epoch-2、epoch-3
+只計算最後一個位置的 logits：是
+=== zero-shot（不掛 adapter） ===
+[zero-shot／val 50/329] 全部 50/3944，P(系統) 0.202；已 1.8 分，約剩 141.8 分
+[zero-shot／val 100/329] 全部 100/3944，P(系統) 0.148；已 3.6 分，約剩 137.8 分
+[zero-shot／val 150/329] 全部 150/3944，P(系統) 0.321；已 5.6 分，約剩 142.2 分
+[zero-shot／val 200/329] 全部 200/3944，P(系統) 0.095；已 7.4 分，約剩 137.7 分
+[zero-shot／val 250/329] 全部 250/3944，P(系統) 0.223；已 9.2 分，約剩 135.7 分
+[zero-shot／val 300/329] 全部 300/3944，P(系統) 0.202；已 11.0 分，約剩 133.8 分
+[zero-shot／val 329/329] 全部 329/3944，P(系統) 0.202；已 12.1 分，約剩 132.5 分
+zero-shot／val：評分 329 筆、沿用進度 0 筆 → /Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/scores_val.json
+[zero-shot／test 50/657] 全部 379/3944，P(系統) 0.148；已 13.9 分，約剩 130.7 分
+[zero-shot／test 100/657] 全部 429/3944，P(系統) 0.469；已 15.9 分，約剩 130.1 分
+[zero-shot／test 150/657] 全部 479/3944，P(系統) 0.182；已 18.0 分，約剩 130.4 分
+[zero-shot／test 200/657] 全部 529/3944，P(系統) 0.245；已 19.9 分，約剩 128.6 分
+[zero-shot／test 250/657] 全部 579/3944，P(系統) 0.202；已 21.9 分，約剩 127.4 分
+[zero-shot／test 300/657] 全部 629/3944，P(系統) 0.182；已 23.7 分，約剩 124.8 分
+[zero-shot／test 350/657] 全部 679/3944，P(系統) 0.119；已 25.4 分，約剩 122.3 分
+[zero-shot／test 400/657] 全部 729/3944，P(系統) 0.269；已 27.2 分，約剩 120.0 分
+[zero-shot／test 450/657] 全部 779/3944，P(系統) 0.182；已 29.2 分，約剩 118.8 分
+[zero-shot／test 500/657] 全部 829/3944，P(系統) 0.378；已 31.1 分，約剩 116.9 分
+[zero-shot／test 550/657] 全部 879/3944，P(系統) 0.349；已 32.9 分，約剩 114.8 分
+[zero-shot／test 600/657] 全部 929/3944，P(系統) 0.119；已 34.7 分，約剩 112.6 分
+[zero-shot／test 650/657] 全部 979/3944，P(系統) 0.148；已 36.4 分，約剩 110.2 分
+[zero-shot／test 657/657] 全部 986/3944，P(系統) 0.148；已 36.6 分，約剩 109.9 分
+zero-shot／test：評分 657 筆、沿用進度 0 筆 → /Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/scores_test.json
+=== epoch-1（/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-1） ===
+[epoch-1／val 50/329] 全部 1036/3944，P(系統) 0.014；已 38.5 分，約剩 108.1 分
+[epoch-1／val 100/329] 全部 1086/3944，P(系統) 0.000；已 40.4 分，約剩 106.3 分
+[epoch-1／val 150/329] 全部 1136/3944，P(系統) 0.321；已 42.3 分，約剩 104.6 分
+[epoch-1／val 200/329] 全部 1186/3944，P(系統) 0.000；已 44.0 分，約剩 102.4 分
+[epoch-1／val 250/329] 全部 1236/3944，P(系統) 0.000；已 45.9 分，約剩 100.6 分
+[epoch-1／val 300/329] 全部 1286/3944，P(系統) 0.001；已 47.8 分，約剩 98.7 分
+[epoch-1／val 329/329] 全部 1315/3944，P(系統) 0.029；已 48.8 分，約剩 97.5 分
+epoch-1／val：評分 329 筆、沿用進度 0 筆 → /Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/scores_val.json
+[epoch-1／test 50/657] 全部 1365/3944，P(系統) 0.000；已 50.7 分，約剩 95.7 分
+[epoch-1／test 100/657] 全部 1415/3944，P(系統) 0.349；已 52.7 分，約剩 94.2 分
+[epoch-1／test 150/657] 全部 1465/3944，P(系統) 0.000；已 54.5 分，約剩 92.2 分
+[epoch-1／test 200/657] 全部 1515/3944，P(系統) 0.000；已 56.3 分，約剩 90.3 分
+[epoch-1／test 250/657] 全部 1565/3944，P(系統) 0.000；已 58.1 分，約剩 88.3 分
+[epoch-1／test 300/657] 全部 1615/3944，P(系統) 0.000；已 60.2 分，約剩 86.9 分
+[epoch-1／test 350/657] 全部 1665/3944，P(系統) 0.001；已 62.0 分，約剩 84.9 分
+[epoch-1／test 400/657] 全部 1715/3944，P(系統) 0.033；已 63.8 分，約剩 82.9 分
+[epoch-1／test 450/657] 全部 1765/3944，P(系統) 0.000；已 65.6 分，約剩 81.0 分
+[epoch-1／test 500/657] 全部 1815/3944，P(系統) 0.005；已 67.3 分，約剩 79.0 分
+[epoch-1／test 550/657] 全部 1865/3944，P(系統) 0.500；已 69.2 分，約剩 77.1 分
+[epoch-1／test 600/657] 全部 1915/3944，P(系統) 0.000；已 71.0 分，約剩 75.3 分
+[epoch-1／test 650/657] 全部 1965/3944，P(系統) 0.000；已 72.9 分，約剩 73.4 分
+[epoch-1／test 657/657] 全部 1972/3944，P(系統) 0.000；已 73.1 分，約剩 73.1 分
+epoch-1／test：評分 657 筆、沿用進度 0 筆 → /Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/scores_test.json
+=== epoch-2（/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-2） ===
+[epoch-2／val 50/329] 全部 2022/3944，P(系統) 0.001；已 75.0 分，約剩 71.3 分
+[epoch-2／val 100/329] 全部 2072/3944，P(系統) 0.000；已 76.8 分，約剩 69.4 分
+[epoch-2／val 150/329] 全部 2122/3944，P(系統) 0.321；已 78.8 分，約剩 67.6 分
+[epoch-2／val 200/329] 全部 2172/3944，P(系統) 0.000；已 80.7 分，約剩 65.8 分
+[epoch-2／val 250/329] 全部 2222/3944，P(系統) 0.000；已 82.7 分，約剩 64.1 分
+[epoch-2／val 300/329] 全部 2272/3944，P(系統) 0.001；已 84.7 分，約剩 62.3 分
+[epoch-2／val 329/329] 全部 2301/3944，P(系統) 0.003；已 85.9 分，約剩 61.3 分
+epoch-2／val：評分 329 筆、沿用進度 0 筆 → /Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/scores_val.json
+[epoch-2／test 50/657] 全部 2351/3944，P(系統) 0.000；已 87.9 分，約剩 59.5 分
+[epoch-2／test 100/657] 全部 2401/3944，P(系統) 0.500；已 90.1 分，約剩 57.9 分
+[epoch-2／test 150/657] 全部 2451/3944，P(系統) 0.000；已 92.0 分，約剩 56.0 分
+[epoch-2／test 200/657] 全部 2501/3944，P(系統) 0.000；已 93.7 分，約剩 54.1 分
+[epoch-2／test 250/657] 全部 2551/3944，P(系統) 0.000；已 95.6 分，約剩 52.2 分
+[epoch-2／test 300/657] 全部 2601/3944，P(系統) 0.000；已 97.5 分，約剩 50.3 分
+[epoch-2／test 350/657] 全部 2651/3944，P(系統) 0.000；已 99.3 分，約剩 48.4 分
+[epoch-2／test 400/657] 全部 2701/3944，P(系統) 0.009；已 101.4 分，約剩 46.7 分
+[epoch-2／test 450/657] 全部 2751/3944，P(系統) 0.000；已 103.4 分，約剩 44.8 分
+[epoch-2／test 500/657] 全部 2801/3944，P(系統) 0.002；已 105.2 分，約剩 42.9 分
+[epoch-2／test 550/657] 全部 2851/3944，P(系統) 0.245；已 107.2 分，約剩 41.1 分
+[epoch-2／test 600/657] 全部 2901/3944，P(系統) 0.000；已 109.2 分，約剩 39.3 分
+[epoch-2／test 650/657] 全部 2951/3944，P(系統) 0.000；已 111.0 分，約剩 37.3 分
+[epoch-2／test 657/657] 全部 2958/3944，P(系統) 0.000；已 111.2 分，約剩 37.1 分
+epoch-2／test：評分 657 筆、沿用進度 0 筆 → /Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/scores_test.json
+=== epoch-3（/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-3） ===
+[epoch-3／val 50/329] 全部 3008/3944，P(系統) 0.000；已 113.1 分，約剩 35.2 分
+[epoch-3／val 100/329] 全部 3058/3944，P(系統) 0.000；已 115.0 分，約剩 33.3 分
+[epoch-3／val 150/329] 全部 3108/3944，P(系統) 0.835；已 116.9 分，約剩 31.4 分
+[epoch-3／val 200/329] 全部 3158/3944，P(系統) 0.000；已 118.7 分，約剩 29.6 分
+[epoch-3／val 250/329] 全部 3208/3944，P(系統) 0.000；已 120.6 分，約剩 27.7 分
+[epoch-3／val 300/329] 全部 3258/3944，P(系統) 0.001；已 122.6 分，約剩 25.8 分
+[epoch-3／val 329/329] 全部 3287/3944，P(系統) 0.004；已 124.0 分，約剩 24.8 分
+epoch-3／val：評分 329 筆、沿用進度 0 筆 → /Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/scores_val.json
+[epoch-3／test 50/657] 全部 3337/3944，P(系統) 0.000；已 126.0 分，約剩 22.9 分
+[epoch-3／test 100/657] 全部 3387/3944，P(系統) 0.963；已 129.7 分，約剩 21.3 分
+[epoch-3／test 150/657] 全部 3437/3944，P(系統) 0.000；已 131.9 分，約剩 19.5 分
+[epoch-3／test 200/657] 全部 3487/3944，P(系統) 0.000；已 133.8 分，約剩 17.5 分
+[epoch-3／test 250/657] 全部 3537/3944，P(系統) 0.000；已 135.7 分，約剩 15.6 分
+[epoch-3／test 300/657] 全部 3587/3944，P(系統) 0.000；已 137.8 分，約剩 13.7 分
+[epoch-3／test 350/657] 全部 3637/3944，P(系統) 0.000；已 139.9 分，約剩 11.8 分
+[epoch-3／test 400/657] 全部 3687/3944，P(系統) 0.010；已 141.9 分，約剩 9.9 分
+[epoch-3／test 450/657] 全部 3737/3944，P(系統) 0.000；已 144.1 分，約剩 8.0 分
+[epoch-3／test 500/657] 全部 3787/3944，P(系統) 0.005；已 146.1 分，約剩 6.1 分
+[epoch-3／test 550/657] 全部 3837/3944，P(系統) 0.012；已 148.3 分，約剩 4.1 分
+[epoch-3／test 600/657] 全部 3887/3944，P(系統) 0.000；已 150.1 分，約剩 2.2 分
+[epoch-3／test 650/657] 全部 3937/3944，P(系統) 0.000；已 151.9 分，約剩 0.3 分
+[epoch-3／test 657/657] 全部 3944/3944，P(系統) 0.000；已 152.2 分，約剩 0.0 分
+epoch-3／test：評分 657 筆、沿用進度 0 筆 → /Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/scores_test.json
+=== 評估 ===
+設定         val_logloss val_AUROC test_AUROC  test_AP │  F1@0.5  R@0.5  P@0.5 │     thr*  F1@thr*  R@thr*  P@thr*
+zero-shot         0.3080    0.8372     0.8155   0.3869 │  0.6082  0.194  0.444 │   0.2816   0.6554   0.548   0.315
+epoch-1 *         0.2205    0.9091     0.9226   0.5996 │  0.7280  0.371  0.742 │   0.2451   0.7550   0.710   0.473
+epoch-2           0.3061    0.9084     0.9270   0.6169 │  0.7167  0.339  0.778 │  0.07586   0.7557   0.597   0.529
+epoch-3           0.3774    0.8975     0.9186   0.5530 │  0.7304  0.435  0.600 │  0.03971   0.7762   0.677   0.538
+tfidf             0.2387    0.8906     0.9209   0.5715 │  0.7393  0.500  0.554 │   0.3868   0.7179   0.565   0.443
+欄位：val／test = 驗證集／測試集；F1 = macro-F1；R、P = 「系統」的 recall、precision；@0.5 = P(系統) ≥ 0.5 才判系統（與 04 貪婪解碼的判斷相同）；thr* = 驗證集上 macro-F1 最高的門檻；* = 選出的 checkpoint。
+選出的 checkpoint：epoch-1（只在訓練出的 checkpoint 中挑驗證集 log-loss 最低的，log-loss 0.2205）
+測試集 95% 信賴區間（bootstrap 2000 次；門檻相關指標用 thr*）：
+  zero-shot  macro-F1 0.6554 [0.6028, 0.7057]，系統 recall 0.548 [0.4194, 0.6724]，AUROC 0.8155 [0.7521, 0.8708]
+             減 tfidf 的差距：macro-F1 [-0.1205, -0.0039]，AUROC [-0.1713, -0.0489]（區間不含 0 才算有差）
+  epoch-1    macro-F1 0.7550 [0.699, 0.8017]，系統 recall 0.710 [0.5965, 0.8163]，AUROC 0.9226 [0.8907, 0.9506]
+             減 tfidf 的差距：macro-F1 [-0.011, 0.0884]，AUROC [-0.0247, 0.0288]（區間不含 0 才算有差）
+  epoch-2    macro-F1 0.7557 [0.6995, 0.8066]，系統 recall 0.597 [0.4746, 0.7213]，AUROC 0.9270 [0.893, 0.9561]
+             減 tfidf 的差距：macro-F1 [-0.0157, 0.0917]，AUROC [-0.0223, 0.0336]（區間不含 0 才算有差）
+  epoch-3    macro-F1 0.7762 [0.7199, 0.8262]，系統 recall 0.677 [0.5613, 0.8]，AUROC 0.9186 [0.8815, 0.9508]
+             減 tfidf 的差距：macro-F1 [0.0047, 0.1092]，AUROC [-0.0347, 0.0289]（區間不含 0 才算有差）
+  tfidf      macro-F1 0.7179 [0.6616, 0.7756]，系統 recall 0.565 [0.4375, 0.6866]，AUROC 0.9209 [0.8934, 0.9448]
+0.5 門檻與 04 預測檔（--reference）的一致筆數：epoch-1 624/657、epoch-2 638/657、epoch-3 656/657
+診斷 zero-shot：兩個標籤的機率合計平均 0.989，機率最高的 token 就是標籤的比例 100.0%
+診斷 epoch-1：兩個標籤的機率合計平均 0.999，機率最高的 token 就是標籤的比例 100.0%
+診斷 epoch-2：兩個標籤的機率合計平均 1.000，機率最高的 token 就是標籤的比例 100.0%
+診斷 epoch-3：兩個標籤的機率合計平均 1.000，機率最高的 token 就是標籤的比例 100.0%
+→ /Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/idt_score_evaluation.json

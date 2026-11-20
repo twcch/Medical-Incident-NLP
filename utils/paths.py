@@ -37,3 +37,7 @@ IDT_ADAPTER_DIR = MODELS_DIR / "idt_adapter"
 INFERENCE_PREDICTIONS = RESULTS_DIR / "inference_predictions.json"
 INFERENCE_EVALUATION = RESULTS_DIR / "inference_evaluation.json"
 RESULTS_PROGRESS_DIR = RESULTS_DIR / "progress"
+
+# 步驟 05 IDT 機率評分（分析用）：各 checkpoint 與 zero-shot 的 P(系統)、門檻與基準比較
+IDT_SCORES_DIR = RESULTS_DIR / "idt_scores"
+IDT_SCORE_EVALUATION = IDT_SCORES_DIR / "idt_score_evaluation.json"

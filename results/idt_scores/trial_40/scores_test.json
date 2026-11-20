@@ -1,0 +1,927 @@
+{
+  "split": "test",
+  "method": "first-token-logit",
+  "idt_prompt": "ad7f88a90790f986",
+  "label_tokens": {
+    "個人": 100117,
+    "系統": 103952
+  },
+  "configs": [
+    {
+      "name": "zero-shot",
+      "adapter": null
+    },
+    {
+      "name": "epoch-1",
+      "adapter": {
+        "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-1",
+        "base_model": "Qwen/Qwen3.5-9B",
+        "idt_prompt": "ad7f88a90790f986",
+        "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
+        "sha256": "110cda4a176c0fd120db955ad2e67a7d2347468c1c9285def1e41b0e3ff49194"
+      }
+    },
+    {
+      "name": "epoch-2",
+      "adapter": {
+        "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-2",
+        "base_model": "Qwen/Qwen3.5-9B",
+        "idt_prompt": "ad7f88a90790f986",
+        "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
+        "sha256": "e2d45676acb99d9d0b0c5b9807809add3aec0266f63a979b97a588983b494c79"
+      }
+    },
+    {
+      "name": "epoch-3",
+      "adapter": {
+        "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-3",
+        "base_model": "Qwen/Qwen3.5-9B",
+        "idt_prompt": "ad7f88a90790f986",
+        "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
+        "sha256": "060d1f8939b43647ba8e43a573d6f526aa983c8b15c717fe47ebbdcd801dbda0"
+      }
+    }
+  ],
+  "records": [
+    {
+      "key": "data.csv:3",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.18242553047372242,
+        "epoch-1": 0.02033235352816842,
+        "epoch-2": 0.0010322311176641198,
+        "epoch-3": 0.0011695102046760956
+      },
+      "label_mass": {
+        "zero-shot": 0.9863278837644088,
+        "epoch-1": 0.9993173876957291,
+        "epoch-2": 0.9999044936158924,
+        "epoch-3": 0.9999319025226923
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:4",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.2942149597859341,
+        "epoch-1": 0.24508501313237172,
+        "epoch-2": 0.025957356491381995,
+        "epoch-3": 0.015906388621205934
+      },
+      "label_mass": {
+        "zero-shot": 0.9921582495640844,
+        "epoch-1": 0.9978436009847141,
+        "epoch-2": 0.9996162502604605,
+        "epoch-3": 0.9998420266409843
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:8",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.13296424878721277,
+        "epoch-1": 0.014063628567046951,
+        "epoch-2": 0.0017007226770815059,
+        "epoch-3": 0.0013250227162213768
+      },
+      "label_mass": {
+        "zero-shot": 0.9884616521431916,
+        "epoch-1": 0.9993491836228341,
+        "epoch-2": 0.9998962371511733,
+        "epoch-3": 0.9999361739308595
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:10",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.1645164608483867,
+        "epoch-1": 0.16451645880021026,
+        "epoch-2": 0.025957357904211723,
+        "epoch-3": 0.009708475344323505
+      },
+      "label_mass": {
+        "zero-shot": 0.9862133283402863,
+        "epoch-1": 0.9982727792837789,
+        "epoch-2": 0.9997110545280806,
+        "epoch-3": 0.9999093449224149
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:16",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.3208213138121609,
+        "epoch-1": 0.009708477135111852,
+        "epoch-2": 0.0005527785850846396,
+        "epoch-3": 0.0009110510926225253
+      },
+      "label_mass": {
+        "zero-shot": 0.9885743418075874,
+        "epoch-1": 0.9993995977483149,
+        "epoch-2": 0.9999002401610062,
+        "epoch-3": 0.9999426467081142
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:17",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.46879062662624377,
+        "epoch-1": 0.3486451285660856,
+        "epoch-2": 0.047425872336085924,
+        "epoch-3": 0.09534947068315555
+      },
+      "label_mass": {
+        "zero-shot": 0.9834464777659473,
+        "epoch-1": 0.9974558706754408,
+        "epoch-2": 0.9994284827072848,
+        "epoch-3": 0.9996330258727982
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:24",
+      "idt_target": "系統",
+      "p_system": {
+        "zero-shot": 0.34864513533394575,
+        "epoch-1": 0.5312093733737563,
+        "epoch-2": 0.3775406617944891,
+        "epoch-3": 0.46879062662624377
+      },
+      "label_mass": {
+        "zero-shot": 0.9838245321410433,
+        "epoch-1": 0.9973681487996748,
+        "epoch-2": 0.9982832090927469,
+        "epoch-3": 0.9992990958617596
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:28",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.13296425050508953,
+        "epoch-1": 0.012431652888428185,
+        "epoch-2": 0.00132502262440844,
+        "epoch-3": 0.0003353502650114026
+      },
+      "label_mass": {
+        "zero-shot": 0.9882274135140505,
+        "epoch-1": 0.9993946606542332,
+        "epoch-2": 0.9998871333281137,
+        "epoch-3": 0.9999468611308062
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:32",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.4073334000459302,
+        "epoch-1": 0.34864513533394575,
+        "epoch-2": 0.09534946232842245,
+        "epoch-3": 0.18242552825126704
+      },
+      "label_mass": {
+        "zero-shot": 0.9924349494037681,
+        "epoch-1": 0.9977304430643144,
+        "epoch-2": 0.9991189272226056,
+        "epoch-3": 0.999252102119717
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:36",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.18242552825126704,
+        "epoch-1": 0.001926735043905266,
+        "epoch-2": 0.0002305068213250481,
+        "epoch-3": 0.00023050676823176887
+      },
+      "label_mass": {
+        "zero-shot": 0.9718823848427689,
+        "epoch-1": 0.9997273525322973,
+        "epoch-2": 0.999927790213328,
+        "epoch-3": 0.9999556754764286
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:39",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.13296424019782924,
+        "epoch-1": 1.8925145551051998e-05,
+        "epoch-2": 5.144220719693869e-05,
+        "epoch-3": 0.00013982205654233167
+      },
+      "label_mass": {
+        "zero-shot": 0.9908476621202734,
+        "epoch-1": 0.9998035566316942,
+        "epoch-2": 0.9999247349208156,
+        "epoch-3": 0.9999530494257903
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:45",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.2018132270610754,
+        "epoch-1": 0.0059110675346181005,
+        "epoch-2": 0.0004305571293221997,
+        "epoch-3": 0.00043055708387980976
+      },
+      "label_mass": {
+        "zero-shot": 0.990336937497035,
+        "epoch-1": 0.9995898429173049,
+        "epoch-2": 0.999927000945277,
+        "epoch-3": 0.9999547614024232
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:47",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.037326883194374896,
+        "epoch-1": 4.006369132325619e-05,
+        "epoch-2": 5.1442237890251334e-05,
+        "epoch-3": 8.4811040989316e-05
+      },
+      "label_mass": {
+        "zero-shot": 0.9943807156738415,
+        "epoch-1": 0.9998274326264744,
+        "epoch-2": 0.9999298599380478,
+        "epoch-3": 0.9999532173347175
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:56",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.16451645675203383,
+        "epoch-1": 0.09534945590170514,
+        "epoch-2": 0.04742587082142043,
+        "epoch-3": 0.2018132150593341
+      },
+      "label_mass": {
+        "zero-shot": 0.9928437978507499,
+        "epoch-1": 0.9985212700182132,
+        "epoch-2": 0.9994609215483484,
+        "epoch-3": 0.9994612800540521
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:71",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.18242552380635632,
+        "epoch-1": 0.00010889691906446317,
+        "epoch-2": 0.00026119030464117926,
+        "epoch-3": 0.0001795279863457183
+      },
+      "label_mass": {
+        "zero-shot": 0.9909853863871121,
+        "epoch-1": 0.9998398965053461,
+        "epoch-2": 0.9999284499996526,
+        "epoch-3": 0.9999581978318881
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:91",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.3486451488696663,
+        "epoch-1": 0.16451646699291617,
+        "epoch-2": 0.03308598089141842,
+        "epoch-3": 0.02595735719779685
+      },
+      "label_mass": {
+        "zero-shot": 0.9900516859727824,
+        "epoch-1": 0.9981427863349641,
+        "epoch-2": 0.9995106408898333,
+        "epoch-3": 0.9997809206347982
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:98",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.09534945975773548,
+        "epoch-1": 6.962259486394891e-06,
+        "epoch-2": 8.481107117932627e-05,
+        "epoch-3": 0.00012339454495444112
+      },
+      "label_mass": {
+        "zero-shot": 0.991013616143849,
+        "epoch-1": 0.9998520131637694,
+        "epoch-2": 0.9999414178967145,
+        "epoch-3": 0.9999615297801993
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:108",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.11920293297380237,
+        "epoch-1": 0.004070137604528235,
+        "epoch-2": 0.002182716894630521,
+        "epoch-3": 0.000911050978287722
+      },
+      "label_mass": {
+        "zero-shot": 0.9806781882007793,
+        "epoch-1": 0.9996539585279628,
+        "epoch-2": 0.9998817797196713,
+        "epoch-3": 0.9999360968827207
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:112",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.18242552158390105,
+        "epoch-1": 0.0021827160001166843,
+        "epoch-2": 0.0008040859010689204,
+        "epoch-3": 0.0009110509825262685
+      },
+      "label_mass": {
+        "zero-shot": 0.9867513086969721,
+        "epoch-1": 0.9996624176117178,
+        "epoch-2": 0.9999094331224782,
+        "epoch-3": 0.9999408603088616
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:113",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.5,
+        "epoch-1": 0.029312229267415526,
+        "epoch-2": 0.005220125737084582,
+        "epoch-3": 0.022977369826395047
+      },
+      "label_mass": {
+        "zero-shot": 0.9822650574352187,
+        "epoch-1": 0.9993210977870857,
+        "epoch-2": 0.9998469721473303,
+        "epoch-3": 0.9998284867200052
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:114",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.20181322946142374,
+        "epoch-1": 0.0008040858545364284,
+        "epoch-2": 0.0002305066824213583,
+        "epoch-3": 0.0004878570506322575
+      },
+      "label_mass": {
+        "zero-shot": 0.9867422437083365,
+        "epoch-1": 0.9997297558050035,
+        "epoch-2": 0.9999064600733233,
+        "epoch-3": 0.9999440544229778
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:120",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.11920292984474948,
+        "epoch-1": 5.4222169799978525e-06,
+        "epoch-2": 2.430023486669471e-05,
+        "epoch-3": 5.82912723275678e-05
+      },
+      "label_mass": {
+        "zero-shot": 0.9944266733897738,
+        "epoch-1": 0.9998684687949593,
+        "epoch-2": 0.9999415744097153,
+        "epoch-3": 0.9999599509479469
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:125",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.29421496597446145,
+        "epoch-1": 0.00015843626511402814,
+        "epoch-2": 7.484623560243476e-05,
+        "epoch-3": 0.00037998443294633377
+      },
+      "label_mass": {
+        "zero-shot": 0.980246388060471,
+        "epoch-1": 0.9997919690651733,
+        "epoch-2": 0.9999259704629536,
+        "epoch-3": 0.9999415835344313
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:134",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.1645164608483867,
+        "epoch-1": 0.00970847555921809,
+        "epoch-2": 0.0010322311014582506,
+        "epoch-3": 0.002800926624404975
+      },
+      "label_mass": {
+        "zero-shot": 0.9902988314159158,
+        "epoch-1": 0.9994526585267206,
+        "epoch-2": 0.9998906824527237,
+        "epoch-3": 0.9999163032595267
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:144",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.1645164608483867,
+        "epoch-1": 0.0001088968660602447,
+        "epoch-2": 0.00023050671120144477,
+        "epoch-3": 0.0003799844341291974
+      },
+      "label_mass": {
+        "zero-shot": 0.9915278149245906,
+        "epoch-1": 0.9998051034701613,
+        "epoch-2": 0.9999244535082334,
+        "epoch-3": 0.9999487325867883
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:147",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.09534946104307897,
+        "epoch-1": 5.7719199313887205e-06,
+        "epoch-2": 6.1441753193193114e-06,
+        "epoch-3": 2.144494070854852e-05
+      },
+      "label_mass": {
+        "zero-shot": 0.987953835630995,
+        "epoch-1": 0.9998207922918785,
+        "epoch-2": 0.9999354576640909,
+        "epoch-3": 0.9999579095205934
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:148",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.22270012850745968,
+        "epoch-1": 0.5926665999540697,
+        "epoch-2": 0.4073334000459302,
+        "epoch-3": 0.9399133531922388
+      },
+      "label_mass": {
+        "zero-shot": 0.9901830643806413,
+        "epoch-1": 0.9975339826507829,
+        "epoch-2": 0.998362155225208,
+        "epoch-3": 0.9994644506240812
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:155",
+      "idt_target": "系統",
+      "p_system": {
+        "zero-shot": 0.1645164608483867,
+        "epoch-1": 0.46879062662624377,
+        "epoch-2": 0.06754668363133542,
+        "epoch-3": 0.06008664617659002
+      },
+      "label_mass": {
+        "zero-shot": 0.9888058814238212,
+        "epoch-1": 0.9973019261777957,
+        "epoch-2": 0.9990792101176594,
+        "epoch-3": 0.9994882904965413
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:166",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.20181322466072713,
+        "epoch-1": 0.010986942195434692,
+        "epoch-2": 0.0002611903656891979,
+        "epoch-3": 0.0002305068227938997
+      },
+      "label_mass": {
+        "zero-shot": 0.9856880528823054,
+        "epoch-1": 0.99931829966416,
+        "epoch-2": 0.9999148658935071,
+        "epoch-3": 0.9999497170073155
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:176",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.1329642419157059,
+        "epoch-1": 2.1444958218301062e-05,
+        "epoch-2": 6.605212066514079e-05,
+        "epoch-3": 0.00012339454491494222
+      },
+      "label_mass": {
+        "zero-shot": 0.9857220998380352,
+        "epoch-1": 0.9998216862838861,
+        "epoch-2": 0.9999348156137354,
+        "epoch-3": 0.9999596228268512
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:178",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.24508501313237172,
+        "epoch-1": 0.06754669301670263,
+        "epoch-2": 0.014063625286999904,
+        "epoch-3": 0.004609572551143471
+      },
+      "label_mass": {
+        "zero-shot": 0.9872899825111118,
+        "epoch-1": 0.9987592212354436,
+        "epoch-2": 0.9997049690292418,
+        "epoch-3": 0.9999070942115612
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:182",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.11920291263495983,
+        "epoch-1": 0.00020342688753137344,
+        "epoch-2": 0.00013982210592319128,
+        "epoch-3": 0.0007096704433928907
+      },
+      "label_mass": {
+        "zero-shot": 0.9908215417751459,
+        "epoch-1": 0.9997852527030665,
+        "epoch-2": 0.9999307630420385,
+        "epoch-3": 0.9999416769608322
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:183",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.13296424019782924,
+        "epoch-1": 7.88926060554956e-06,
+        "epoch-2": 5.144220107833933e-05,
+        "epoch-3": 0.00010889688277022901
+      },
+      "label_mass": {
+        "zero-shot": 0.9919574134470424,
+        "epoch-1": 0.9998488881636234,
+        "epoch-2": 0.9999267610602285,
+        "epoch-3": 0.9999546589231919
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:191",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.24508501313237172,
+        "epoch-1": 0.00033535020748587933,
+        "epoch-2": 0.00043055707764212816,
+        "epoch-3": 0.0015011823979060972
+      },
+      "label_mass": {
+        "zero-shot": 0.9895574883980398,
+        "epoch-1": 0.9998297438118382,
+        "epoch-2": 0.9999252137594159,
+        "epoch-3": 0.9999424834307991
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:197",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.1329642281726931,
+        "epoch-1": 0.0001233946141350209,
+        "epoch-2": 0.0001398221058092652,
+        "epoch-3": 0.00029595702556959626
+      },
+      "label_mass": {
+        "zero-shot": 0.9907757022146088,
+        "epoch-1": 0.9998122128358506,
+        "epoch-2": 0.9999269494309002,
+        "epoch-3": 0.9999529764186506
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:200",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.22270013366638422,
+        "epoch-1": 0.047425871831197425,
+        "epoch-2": 0.014063625067469224,
+        "epoch-3": 0.010986940464920873
+      },
+      "label_mass": {
+        "zero-shot": 0.9877442945053405,
+        "epoch-1": 0.9990468379589492,
+        "epoch-2": 0.9997612364020984,
+        "epoch-3": 0.9998947263731801
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:201",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.1480471980316895,
+        "epoch-1": 6.540437915431544e-06,
+        "epoch-2": 5.829124439082834e-05,
+        "epoch-3": 8.481101073761357e-05
+      },
+      "label_mass": {
+        "zero-shot": 0.9853439834514195,
+        "epoch-1": 0.9998395550580449,
+        "epoch-2": 0.9999375431740948,
+        "epoch-3": 0.9999602494460592
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:207",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.10669059607594457,
+        "epoch-1": 0.0008040858550040916,
+        "epoch-2": 0.00013982203893058202,
+        "epoch-3": 0.00012339463308912762
+      },
+      "label_mass": {
+        "zero-shot": 0.9913994956379806,
+        "epoch-1": 0.9997302319319612,
+        "epoch-2": 0.9999197988970998,
+        "epoch-3": 0.9999560473837429
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:209",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.2018132150593341,
+        "epoch-1": 0.0004305569852042069,
+        "epoch-2": 7.48462088939751e-05,
+        "epoch-3": 0.0001398221400033795
+      },
+      "label_mass": {
+        "zero-shot": 0.9884272551801867,
+        "epoch-1": 0.9997623755856256,
+        "epoch-2": 0.9999310953127099,
+        "epoch-3": 0.9999581743353441
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    },
+    {
+      "key": "data.csv:212",
+      "idt_target": "個人",
+      "p_system": {
+        "zero-shot": 0.4073334000459302,
+        "epoch-1": 0.24508500761839525,
+        "epoch-2": 0.18242552602881168,
+        "epoch-3": 0.7772998611746911
+      },
+      "label_mass": {
+        "zero-shot": 0.9892459598928929,
+        "epoch-1": 0.9976260835231748,
+        "epoch-2": 0.9987594357932882,
+        "epoch-3": 0.9993384055964298
+      },
+      "top_is_label": {
+        "zero-shot": true,
+        "epoch-1": true,
+        "epoch-2": true,
+        "epoch-3": true
+      }
+    }
+  ]
+}
