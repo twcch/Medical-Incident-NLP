@@ -25,6 +25,7 @@ from utils.llm import (
     chat_generate,
     close_chat_model,
     message_text,
+    move_to_device,
     to_dict_messages,
     to_langchain_messages,
 )
@@ -270,3 +271,19 @@ def test_inference_resolves_models_from_cli_then_llm_defaults(monkeypatch):
         )
     )
     assert idt.model == "base" and emotion.model == "other" and emotion.provider == "openai"
+
+
+def test_move_to_device_copies_each_weight_out_of_its_original_storage():
+    """GB10 上直接 model.to("cuda") 搬 mmap 權重會卡住；改成每個權重先複製到新記憶體再搬。"""
+    import torch
+
+    model = torch.nn.Sequential(torch.nn.Linear(4, 4), torch.nn.Linear(4, 4))
+    model[1].weight = model[0].weight  # 共用權重（tied）搬完仍要共用
+    model.register_buffer("scale", torch.ones(2))
+    storage = {name: p.data_ptr() for name, p in model.named_parameters()}
+    values = {name: p.detach().clone() for name, p in model.named_parameters()}
+    moved = move_to_device(model, "cpu")
+    for name, p in moved.named_parameters():
+        assert p.data_ptr() != storage[name] and torch.equal(p, values[name])
+    assert moved[1].weight is moved[0].weight
+    assert torch.equal(moved.scale, torch.ones(2))

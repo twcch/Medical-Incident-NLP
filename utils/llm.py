@@ -189,6 +189,21 @@ def load_tokenizer(model_name: str, local_files_only: bool = False):
         return transformers.AutoProcessor.from_pretrained(model_name, **kwargs)
 
 
+def move_to_device(model, device: str):
+    """把模型搬到裝置：每個權重先複製到新的記憶體再搬，不直接 model.to()。
+
+    transformers 5 載入後的權重仍對應在 safetensors 檔案上（mmap）。在 GB10（DGX Spark，CPU 與
+    GPU 共用記憶體）上直接 model.to("cuda") 會卡住十分鐘以上而且無法中斷；同一台機器先複製再搬，
+    17.5 GiB 只要 5 秒（2026-11-22 實測）。load_base_model 只在 CUDA 用這個方式。
+    """
+    import torch
+
+    with torch.no_grad():
+        for param in model.parameters():  # 共用的權重只會出現一次，搬完仍共用
+            param.data = param.data.clone().to(device)
+    return model.to(device)  # 剩下的 buffer；參數已在裝置上，不會再複製
+
+
 def load_base_model(config: ModelConfig):
     """載入本機基礎模型並搬到裝置；回傳 (model, device, dtype 名稱)。
 
@@ -229,7 +244,8 @@ def load_base_model(config: ModelConfig):
             errors.append(f"{name}: {str(exc).splitlines()[0]}")
             continue
         if not config.load_in_4bit:
-            model = model.to(device)
+            # CUDA 先複製再搬（GB10 直接 .to() 會卡住）；MPS、CPU 直接 .to() 沒問題，照舊。
+            model = move_to_device(model, device) if device == "cuda" else model.to(device)
         dtype_name = "nf4" if config.load_in_4bit else str(torch_dtype).removeprefix("torch.")
         return model, device, dtype_name
     raise RuntimeError(f"無法載入模型 {config.model}：\n" + "\n".join(errors))

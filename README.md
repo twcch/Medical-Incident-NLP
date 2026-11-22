@@ -348,3 +348,4 @@ python -m scripts.05_score_idt --adapters models/idt_adapter/checkpoints/epoch-1
 - 2026-10-18：實驗報告 `docs/experiment_report_2026-10-18.docx`（2026-10-27 更新）。
 - 2026-10-27：README 重寫。
 - 2026-11-20：新增 05 IDT 機率評分：各 epoch、zero-shot 與 TF-IDF 基準的 AUROC／AP，以驗證集挑 checkpoint 與調門檻，bootstrap 信賴區間；requirements 加入 scikit-learn。
+- 2026-11-22：CUDA 載入模型改成每個權重先複製再搬上 GPU；在 GB10（vast.ai）上直接 `model.to("cuda")` 會卡住十分鐘以上，改後 17.5 GiB 只要 5 秒。模型權重（`*.pt`、`*.safetensors`）不再進版本庫。
