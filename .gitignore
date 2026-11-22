@@ -9,3 +9,11 @@ __pycache__/
 
 # macOS 系統檔
 .DS_Store
+
+# 模型權重與 optimizer 狀態：v2 起單檔 150–300 MB，超過 GitHub 單檔 100 MB 上限，
+# 雲端訓練完直接下載放回來，不進版本庫（v1 已追蹤的小檔不受影響）
+*.pt
+*.safetensors
+
+# 03 --limit 的試跑輸出
+trial_*/
