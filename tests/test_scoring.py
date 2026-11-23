@@ -14,6 +14,7 @@ from utils.evaluation import (
     best_threshold,
     binary_log_loss,
     bootstrap_intervals,
+    merge_near_ties,
     roc_auc,
     summarize_scores,
 )
@@ -135,6 +136,21 @@ def test_best_threshold_maximizes_macro_f1():
 def test_best_threshold_prefers_the_one_nearest_half_on_ties():
     # 0.2 與 0.775 的 macro-F1 相同，取離 0.5 較近的 0.775
     assert best_threshold([0, 1, 0, 1], [0.1, 0.3, 0.6, 0.95])["threshold"] == pytest.approx(0.775)
+
+
+def test_merge_near_ties_joins_scores_whose_logits_differ_less_than_the_tolerance():
+    """同一個 logit 差算出的 P(系統) 只差浮點誤差（bf16 的 logit 是離散的），要視為同分。"""
+    merged = merge_near_ties([0.2450851, 0.9, 0.2450850, 0.26, 0.0, 1.0])
+    assert merged[0] == merged[2] == 0.2450850  # 同一群換成其中最小的分數
+    assert merged[1] == 0.9 and merged[3] == 0.26  # 差得夠遠的分數不動
+    assert merged[4] == 0.0 and merged[5] == 1.0  # 0 與 1 不會讓 logit 溢位
+
+
+def test_merge_near_ties_keeps_order_and_length():
+    scores = [0.7, 0.1, 0.1000000001, 0.4]
+    merged = merge_near_ties(scores)
+    assert len(merged) == 4 and merged[0] == 0.7 and merged[3] == 0.4
+    assert merged[1] == merged[2] == 0.1
 
 
 def test_best_threshold_keeps_half_when_validation_has_one_class():
@@ -339,6 +355,22 @@ def test_summarize_scores_bootstraps_every_config_against_the_baseline():
     assert set(intervals) == {"epoch-1", "tfidf"}
     assert set(intervals["epoch-1"]["vs_baseline"]) == {"macro_f1", "auroc"}
     assert summary["bootstrap"]["resamples"] == 30 and summary["bootstrap"]["baseline"] == "tfidf"
+
+
+def test_summarize_scores_treats_scores_differing_by_float_noise_as_ties():
+    """0.3 附近四筆只差浮點誤差（同一個 logit 差）。把它們當成不同分數，門檻會切在這群中間，
+    驗證集看起來完全分得開；視為同分後，整群只能判在同一邊。"""
+    val_y = [0, 0, 0, 0, 0, 1, 1, 1]
+    val = {"epoch-1": [0.05, 0.05, 0.1, 0.3000000, 0.3000001, 0.3000002, 0.3000003, 0.9]}
+    test_y = [0, 1, 0, 1]
+    test = {"epoch-1": [0.3000000, 0.3000001, 0.05, 0.9]}
+    summary = summarize_scores(val_y, val, test_y, test, candidates=["epoch-1"], bootstrap=0, seed=0)
+    epoch1 = summary["configs"]["epoch-1"]
+    assert epoch1["threshold"]["value"] == pytest.approx(0.2)  # 0.1 與 0.3 的中點，不在同分群裡
+    assert epoch1["threshold"]["val_macro_f1"] == pytest.approx(0.75)
+    assert epoch1["val"]["auroc"] == pytest.approx(13 / 15, abs=1e-4)  # 同分的配對各算一半
+    assert epoch1["test_at_threshold"]["confusion_matrix"]["matrix"] == [[1, 1], [0, 2]]
+    assert summary["tie_tolerance_logit"] == pytest.approx(1e-4)
 
 
 # ---- 05 命令列 ----

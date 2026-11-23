@@ -127,3 +127,30 @@ tfidf             0.2387    0.8906     0.9209   0.5715 │  0.7393  0.500  0.554
 診斷 epoch-2：兩個標籤的機率合計平均 1.000，機率最高的 token 就是標籤的比例 100.0%
 診斷 epoch-3：兩個標籤的機率合計平均 1.000，機率最高的 token 就是標籤的比例 100.0%
 → /Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/idt_score_evaluation.json
+
+=== 2026-11-23 重新評估（--stage evaluate；05 改成把 logit 相差不到 1e-4 的分數視為同分）===
+=== 評估 ===
+設定         val_logloss val_AUROC test_AUROC  test_AP │  F1@0.5  R@0.5  P@0.5 │     thr*  F1@thr*  R@thr*  P@thr*
+zero-shot         0.3080    0.8429     0.8145   0.3805 │  0.6082  0.194  0.444 │   0.2816   0.6554   0.548   0.315
+epoch-1 *         0.2205    0.9090     0.9223   0.5946 │  0.7280  0.371  0.742 │   0.2339   0.7603   0.742   0.474
+epoch-2           0.3061    0.9082     0.9269   0.6142 │  0.7167  0.339  0.778 │   0.0717   0.7564   0.613   0.520
+epoch-3           0.3774    0.8979     0.9185   0.5450 │  0.7304  0.435  0.600 │  0.03971   0.7762   0.677   0.538
+tfidf             0.2387    0.8906     0.9209   0.5715 │  0.7393  0.500  0.554 │   0.3868   0.7179   0.565   0.443
+欄位：val／test = 驗證集／測試集；F1 = macro-F1；R、P = 「系統」的 recall、precision；@0.5 = P(系統) ≥ 0.5 才判系統（與 04 貪婪解碼的判斷相同）；thr* = 驗證集上 macro-F1 最高的門檻；* = 選出的 checkpoint。
+選出的 checkpoint：epoch-1（只在訓練出的 checkpoint 中挑驗證集 log-loss 最低的，log-loss 0.2205）
+測試集 95% 信賴區間（bootstrap 2000 次；門檻相關指標用 thr*）：
+  zero-shot  macro-F1 0.6554 [0.6028, 0.7057]，系統 recall 0.548 [0.4194, 0.6724]，AUROC 0.8145 [0.7508, 0.8706]
+             減 tfidf 的差距：macro-F1 [-0.1205, -0.0039]，AUROC [-0.1729, -0.0499]（區間不含 0 才算有差）
+  epoch-1    macro-F1 0.7603 [0.7074, 0.8081]，系統 recall 0.742 [0.629, 0.8462]，AUROC 0.9223 [0.89, 0.9504]
+             減 tfidf 的差距：macro-F1 [-0.0076, 0.0968]，AUROC [-0.0253, 0.0284]（區間不含 0 才算有差）
+  epoch-2    macro-F1 0.7564 [0.7004, 0.8063]，系統 recall 0.613 [0.4925, 0.7407]，AUROC 0.9269 [0.8927, 0.9562]
+             減 tfidf 的差距：macro-F1 [-0.0153, 0.095]，AUROC [-0.0224, 0.034]（區間不含 0 才算有差）
+  epoch-3    macro-F1 0.7762 [0.7199, 0.8262]，系統 recall 0.677 [0.5613, 0.8]，AUROC 0.9185 [0.881, 0.9508]
+             減 tfidf 的差距：macro-F1 [0.0047, 0.1092]，AUROC [-0.0346, 0.029]（區間不含 0 才算有差）
+  tfidf      macro-F1 0.7179 [0.6616, 0.7756]，系統 recall 0.565 [0.4375, 0.6866]，AUROC 0.9209 [0.8934, 0.9448]
+0.5 門檻與 04 預測檔（--reference）的一致筆數：epoch-1 624/657、epoch-2 638/657、epoch-3 656/657
+診斷 zero-shot：兩個標籤的機率合計平均 0.989，機率最高的 token 就是標籤的比例 100.0%
+診斷 epoch-1：兩個標籤的機率合計平均 0.999，機率最高的 token 就是標籤的比例 100.0%
+診斷 epoch-2：兩個標籤的機率合計平均 1.000，機率最高的 token 就是標籤的比例 100.0%
+診斷 epoch-3：兩個標籤的機率合計平均 1.000，機率最高的 token 就是標籤的比例 100.0%
+→ /Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores/idt_score_evaluation.json

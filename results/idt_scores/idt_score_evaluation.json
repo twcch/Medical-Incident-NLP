@@ -1,7 +1,7 @@
 {
-  "created": "2026-11-20T04:53:28+00:00",
+  "created": "2026-11-23T05:26:00+00:00",
   "settings": {
-    "stage": "all",
+    "stage": "evaluate",
     "limit": null,
     "out_dir": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/results/idt_scores",
     "data": {
@@ -35,42 +35,7 @@
     },
     "method": "first-token-logit",
     "idt_prompt": "ad7f88a90790f986",
-    "configs": [
-      {
-        "name": "zero-shot",
-        "adapter": null
-      },
-      {
-        "name": "epoch-1",
-        "adapter": {
-          "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-1",
-          "base_model": "Qwen/Qwen3.5-9B",
-          "idt_prompt": "ad7f88a90790f986",
-          "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
-          "sha256": "110cda4a176c0fd120db955ad2e67a7d2347468c1c9285def1e41b0e3ff49194"
-        }
-      },
-      {
-        "name": "epoch-2",
-        "adapter": {
-          "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-2",
-          "base_model": "Qwen/Qwen3.5-9B",
-          "idt_prompt": "ad7f88a90790f986",
-          "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
-          "sha256": "e2d45676acb99d9d0b0c5b9807809add3aec0266f63a979b97a588983b494c79"
-        }
-      },
-      {
-        "name": "epoch-3",
-        "adapter": {
-          "path": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/checkpoints/epoch-3",
-          "base_model": "Qwen/Qwen3.5-9B",
-          "idt_prompt": "ad7f88a90790f986",
-          "training_metadata": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/models/idt_adapter/training_metadata.json",
-          "sha256": "060d1f8939b43647ba8e43a573d6f526aa983c8b15c717fe47ebbdcd801dbda0"
-        }
-      }
-    ],
+    "configs": null,
     "baseline": {
       "name": "tfidf",
       "train_data": "/Users/twcch/My Drive/Dev/Research/nature-language-research/Medical-Incident-NLP/data/processed_data/train_data.json",
@@ -155,16 +120,16 @@
     "zero-shot": {
       "val": {
         "log_loss": 0.308,
-        "auroc": 0.8372,
-        "ap": 0.3597
+        "auroc": 0.8429,
+        "ap": 0.3553
       },
       "test": {
         "log_loss": 0.313,
-        "auroc": 0.8155,
-        "ap": 0.3869
+        "auroc": 0.8145,
+        "ap": 0.3805
       },
       "threshold": {
-        "value": 0.28157819643745696,
+        "value": 0.28157818471847246,
         "val_macro_f1": 0.6935,
         "note": null
       },
@@ -266,17 +231,17 @@
     "epoch-1": {
       "val": {
         "log_loss": 0.2205,
-        "auroc": 0.9091,
-        "ap": 0.4846
+        "auroc": 0.909,
+        "ap": 0.4646
       },
       "test": {
         "log_loss": 0.1958,
-        "auroc": 0.9226,
-        "ap": 0.5996
+        "auroc": 0.9223,
+        "ap": 0.5946
       },
       "threshold": {
-        "value": 0.2450850076183953,
-        "val_macro_f1": 0.7573,
+        "value": 0.23389256530593927,
+        "val_macro_f1": 0.7527,
         "note": null
       },
       "test_at_0.5": {
@@ -329,7 +294,7 @@
         "correct": 590,
         "accuracy": 0.898,
         "invalid_predictions": 0,
-        "macro_f1": 0.755,
+        "macro_f1": 0.7603,
         "confusion_matrix": {
           "labels": [
             "個人",
@@ -339,12 +304,12 @@
           "cols": "idt_pred（預測）",
           "matrix": [
             [
-              546,
-              49
+              544,
+              51
             ],
             [
-              18,
-              44
+              16,
+              46
             ]
           ],
           "invalid_by_label": {
@@ -355,17 +320,17 @@
         "per_label": {
           "個人": {
             "support": 595,
-            "predicted": 564,
-            "precision": 0.9681,
-            "recall": 0.9176,
-            "f1": 0.9422
+            "predicted": 560,
+            "precision": 0.9714,
+            "recall": 0.9143,
+            "f1": 0.942
           },
           "系統": {
             "support": 62,
-            "predicted": 93,
-            "precision": 0.4731,
-            "recall": 0.7097,
-            "f1": 0.5677
+            "predicted": 97,
+            "precision": 0.4742,
+            "recall": 0.7419,
+            "f1": 0.5786
           }
         }
       },
@@ -377,17 +342,17 @@
     "epoch-2": {
       "val": {
         "log_loss": 0.3061,
-        "auroc": 0.9084,
-        "ap": 0.466
+        "auroc": 0.9082,
+        "ap": 0.4668
       },
       "test": {
         "log_loss": 0.243,
-        "auroc": 0.927,
-        "ap": 0.6169
+        "auroc": 0.9269,
+        "ap": 0.6142
       },
       "threshold": {
-        "value": 0.07585818028240056,
-        "val_macro_f1": 0.7354,
+        "value": 0.07170242790893924,
+        "val_macro_f1": 0.7305,
         "note": null
       },
       "test_at_0.5": {
@@ -437,10 +402,10 @@
       },
       "test_at_threshold": {
         "records": 657,
-        "correct": 599,
-        "accuracy": 0.9117,
+        "correct": 598,
+        "accuracy": 0.9102,
         "invalid_predictions": 0,
-        "macro_f1": 0.7557,
+        "macro_f1": 0.7564,
         "confusion_matrix": {
           "labels": [
             "個人",
@@ -450,12 +415,12 @@
           "cols": "idt_pred（預測）",
           "matrix": [
             [
-              562,
-              33
+              560,
+              35
             ],
             [
-              25,
-              37
+              24,
+              38
             ]
           ],
           "invalid_by_label": {
@@ -466,17 +431,17 @@
         "per_label": {
           "個人": {
             "support": 595,
-            "predicted": 587,
-            "precision": 0.9574,
-            "recall": 0.9445,
-            "f1": 0.9509
+            "predicted": 584,
+            "precision": 0.9589,
+            "recall": 0.9412,
+            "f1": 0.95
           },
           "系統": {
             "support": 62,
-            "predicted": 70,
-            "precision": 0.5286,
-            "recall": 0.5968,
-            "f1": 0.5606
+            "predicted": 73,
+            "precision": 0.5205,
+            "recall": 0.6129,
+            "f1": 0.5629
           }
         }
       },
@@ -488,16 +453,16 @@
     "epoch-3": {
       "val": {
         "log_loss": 0.3774,
-        "auroc": 0.8975,
-        "ap": 0.4543
+        "auroc": 0.8979,
+        "ap": 0.4552
       },
       "test": {
         "log_loss": 0.3058,
-        "auroc": 0.9186,
-        "ap": 0.553
+        "auroc": 0.9185,
+        "ap": 0.545
       },
       "threshold": {
-        "value": 0.039707307383392114,
+        "value": 0.03970730467997009,
         "val_macro_f1": 0.7577,
         "note": null
       },
@@ -738,12 +703,12 @@
           0.491
         ],
         "auroc": [
-          0.7521,
-          0.8708
+          0.7508,
+          0.8706
         ],
         "ap": [
-          0.2713,
-          0.5082
+          0.2679,
+          0.5006
         ],
         "vs_baseline": {
           "macro_f1": [
@@ -751,80 +716,80 @@
             -0.0039
           ],
           "auroc": [
-            -0.1713,
-            -0.0489
+            -0.1729,
+            -0.0499
           ]
         }
       },
       "epoch-1": {
         "macro_f1": [
-          0.699,
-          0.8017
+          0.7074,
+          0.8081
         ],
         "system_precision": [
-          0.3666,
-          0.5715
+          0.3723,
+          0.5714
         ],
         "system_recall": [
-          0.5965,
-          0.8163
+          0.629,
+          0.8462
         ],
         "system_f1": [
-          0.4667,
-          0.6543
+          0.4789,
+          0.6667
         ],
         "auroc": [
-          0.8907,
-          0.9506
+          0.89,
+          0.9504
         ],
         "ap": [
-          0.4786,
-          0.717
+          0.4727,
+          0.71
         ],
         "vs_baseline": {
           "macro_f1": [
-            -0.011,
-            0.0884
+            -0.0076,
+            0.0968
           ],
           "auroc": [
-            -0.0247,
-            0.0288
+            -0.0253,
+            0.0284
           ]
         }
       },
       "epoch-2": {
         "macro_f1": [
-          0.6995,
-          0.8066
+          0.7004,
+          0.8063
         ],
         "system_precision": [
-          0.4091,
-          0.6386
+          0.4032,
+          0.6282
         ],
         "system_recall": [
-          0.4746,
-          0.7213
+          0.4925,
+          0.7407
         ],
         "system_f1": [
-          0.4539,
-          0.6528
+          0.4576,
+          0.6557
         ],
         "auroc": [
-          0.893,
-          0.9561
+          0.8927,
+          0.9562
         ],
         "ap": [
-          0.492,
-          0.7427
+          0.4903,
+          0.7413
         ],
         "vs_baseline": {
           "macro_f1": [
-            -0.0157,
-            0.0917
+            -0.0153,
+            0.095
           ],
           "auroc": [
-            -0.0223,
-            0.0336
+            -0.0224,
+            0.034
           ]
         }
       },
@@ -846,12 +811,12 @@
           0.6901
         ],
         "auroc": [
-          0.8815,
+          0.881,
           0.9508
         ],
         "ap": [
-          0.4352,
-          0.7005
+          0.4294,
+          0.6924
         ],
         "vs_baseline": {
           "macro_f1": [
@@ -859,8 +824,8 @@
             0.1092
           ],
           "auroc": [
-            -0.0347,
-            0.0289
+            -0.0346,
+            0.029
           ]
         }
       },
@@ -891,5 +856,6 @@
         ]
       }
     }
-  }
+  },
+  "tie_tolerance_logit": 0.0001
 }

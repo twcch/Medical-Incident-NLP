@@ -107,6 +107,27 @@ def judge_summary(records: list[dict], field: str = EMOTION_JUDGE) -> dict:
 
 BOOTSTRAP_METRICS = ("macro_f1", "system_precision", "system_recall", "system_f1", "auroc", "ap")
 PAIRED_METRICS = ("macro_f1", "auroc")
+# bf16 的 logit 是離散的：同一個 logit 差算出的 P(系統) 只差 log-softmax 的捨入誤差（換成 logit 約 1e-6），
+# 真正不同的分數則相差 0.06 以上（2026-11-23 實測）。logit 相差不到這個值的分數視為同分。
+TIE_TOLERANCE = 1e-4
+
+
+def merge_near_ties(scores: Sequence[float], tolerance: float = TIE_TOLERANCE) -> list[float]:
+    """把只差浮點誤差的分數換成同一個值；順序與筆數不變。
+
+    由小到大看，logit 與前一個分數相差不到 tolerance 的歸為同一群，整群換成其中最小的分數。
+    不先合併的話，門檻會切在同分的紀錄之間，AUROC／AP 也不會把它們當成同分。
+    """
+    merged = list(scores)
+    anchor = previous = None
+    for index in sorted(range(len(scores)), key=scores.__getitem__):
+        probability = min(max(scores[index], 1e-12), 1 - 1e-12)  # 0 與 1 的 logit 是無限大
+        current = math.log(probability / (1 - probability))
+        if previous is None or current - previous > tolerance:
+            anchor = scores[index]
+        merged[index] = anchor
+        previous = current
+    return merged
 
 
 def _weights(targets: Sequence[int], weights: Sequence[int] | None) -> Sequence[int]:
@@ -326,11 +347,18 @@ def summarize_scores(
     checkpoint 只從 candidates 中挑驗證集 log-loss 最低的；zero-shot 與 TF-IDF 是基準，不參與挑選。
     reference 是 04 對測試集的 idt_pred（與 test_targets 同序，None 表示沒有），用來核對 0.5 門檻
     的判斷與貪婪解碼是否一致。bootstrap 是重抽樣次數，0 表示不算信賴區間。
+
+    每個設定先把驗證集與測試集的分數一起合併同分（merge_near_ties），之後的指標、門檻與重抽樣
+    都用合併後的分數；門檻因此落在真正不同的分數之間，同一群在兩個集合的判斷一致。
     """
     configs: dict[str, dict] = {}
     val_log_loss: dict[str, float] = {}
-    for name, test in test_scores.items():
-        val = val_scores[name]
+    merged_test: dict[str, list[float]] = {}
+    for name in test_scores:
+        size = len(val_scores[name])
+        merged = merge_near_ties([*val_scores[name], *test_scores[name]])
+        val, test = merged[:size], merged[size:]
+        merged_test[name] = test
         val_log_loss[name] = binary_log_loss(val_targets, val)
         threshold = best_threshold(val_targets, val)
         item = {
@@ -375,7 +403,7 @@ def summarize_scores(
     intervals = None
     if bootstrap:
         systems = {
-            name: (test_scores[name], configs[name]["threshold"]["value"]) for name in configs
+            name: (merged_test[name], configs[name]["threshold"]["value"]) for name in configs
         }
         intervals = {
             "resamples": bootstrap,
@@ -387,4 +415,9 @@ def summarize_scores(
                 test_targets, systems, n=bootstrap, seed=seed, baseline=baseline
             ),
         }
-    return {"configs": configs, "selected": selected, "bootstrap": intervals}
+    return {
+        "configs": configs,
+        "selected": selected,
+        "bootstrap": intervals,
+        "tie_tolerance_logit": TIE_TOLERANCE,
+    }

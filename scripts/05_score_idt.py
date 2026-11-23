@@ -1,11 +1,12 @@
-"""步驟 05 IDT 機率評分與 checkpoint 選擇（分析用，不在流程圖內）。
+"""步驟 05 IDT 機率評分與 checkpoint 選擇（分析用），對應流程圖的 ⑩⑪。
 
 04 的 ⑥ 用貪婪解碼，等於固定在 P(系統) > 0.5 才判「系統」，無法比較 checkpoint，也不能調門檻。
 這一步不生成文字，直接讀回答第一個 token 的 logit 算 P(系統)：
 
     score     載入基礎模型一次，依序掛上 03 存下的每個 epoch 的 adapter，再加上不掛 adapter 的
               zero-shot，對驗證集與測試集逐筆評分（要 GPU；逐筆寫進度檔，可中斷續跑）
-    evaluate  只讀分數檔（不載模型）：各設定的 log-loss／AUROC／AP；以驗證集 log-loss 挑 checkpoint；
+    evaluate  只讀分數檔（不載模型）：先把只差浮點誤差的分數合併成同分，再算各設定的
+              log-loss／AUROC／AP；以驗證集 log-loss 挑 checkpoint；
               在驗證集找 macro-F1 最高的門檻；比較測試集在 0.5 與該門檻的指標與 bootstrap 信賴區間；
               加上 TF-IDF＋邏輯迴歸基準（需要 scikit-learn）
 
