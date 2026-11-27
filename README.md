@@ -172,7 +172,7 @@ results/              04 輸出：inference_predictions.json、inference_evaluat
 results/idt_scores/   05 輸出：scores_val／test.json、idt_score_evaluation.json、progress/
 results/idt_scores_v2/、models/idt_adapter_v2/    第二輪 v2 的 05 輸出與 adapter（設定與 training_metadata.json）
 analysis/             流程以外的比較、補充分析、圖表、流程圖與報告產生腳本（沒有單元測試）
-results/analysis/     analysis/ 的輸出：idt_comparison.json、idt_inputs.json、報告與論文稿用的圖
+results/analysis/     analysis/ 的輸出：idt_comparison.json、idt_inputs.json、idt_overfitting.json、報告與論文稿用的圖
 docs/                 論文稿（第 3、4 章）；各輪的報告與流程圖依日期放在 docs/2026-10-18/（第一輪）、docs/2026-11-23/（第二輪）
 ```
 
@@ -307,10 +307,12 @@ python -m scripts.05_score_idt --adapter-dir models/idt_adapter_v2 --out-dir res
 | `python -m analysis.report_charts` | 報告的四張圖：AUROC／macro-F1 的信賴區間、訓練與驗證損失、篩檢效益曲線、換輸入欄位的 AUROC | `results/analysis/fig_ci.png`、`fig_training.png`、`fig_screening.png`、`fig_fields.png` |
 | `python -m analysis.research_flow --png` | 研究流程圖；流程有變動時改這個檔案裡的卡片文字與座標 | `docs/research_flow.svg`、`.png` |
 | `python -m analysis.build_report` | 組出第二輪報告的 `.docx`：沿用 `docs/2026-10-18/` 那份報告的樣式，數字由上面的輸出代入 | `docs/experiment_report_2026-11-23.docx` |
-| `python -m analysis.manuscript_figures` | 論文稿的五張圖：研究架構、AUROC／macro-F1 的信賴區間、訓練與驗證損失、累積增益、換輸入來源的 AUROC（模型以論文中的名稱 LoRA-S、LoRA-L 標示） | `results/analysis/ms_fig1_framework.png` … `ms_fig5_inputs.png` |
-| `python -m analysis.build_manuscript` | 組出期刊論文第 3 章（研究方法）與第 4 章（實驗結果）的 `.docx`：編號公式、三線表、圖題；敘述以 assert 綁在數字上，表格逐格檢查欄寬；【　】是需要作者補上的資訊 | `docs/manuscript_ch3_ch4_2026-11-23.docx` |
+| `python -m analysis.idt_overfitting` | 過度擬合的檢驗：選定的 checkpoint 是否為驗證損失最低者、驗證集到測試集的差值與信賴區間（兩個集合各自獨立重抽樣）、與訓練資料的相似度（拿掉高度相似的測試通報、依相似度分半的增益）、校準（斜率、ECE、以驗證集再校準；沒有寫進論文稿，備查）（約 1 分鐘） | `results/analysis/idt_overfitting.json` |
+| `python -m analysis.manuscript_figures` | 論文稿的圖：研究架構、AUROC／macro-F1 的信賴區間、訓練與驗證損失（初稿的兩格版本，以及修訂稿加上測試集 log-loss 並標出選定 checkpoint 的三格版本）、累積增益、換輸入來源的 AUROC（模型以論文中的名稱 LoRA-S、LoRA-L 標示） | `results/analysis/ms_fig1_framework.png` … `ms_fig5_inputs.png`、`ms_fig3_overfitting.png` |
+| `python -m analysis.build_manuscript` | 組出期刊論文第 3 章（研究方法）與第 4 章（實驗結果）的 `.docx`：編號公式、三線表、圖題；敘述以 assert 綁在數字上，表格逐格檢查欄寬；【　】是需要作者補上的資訊。**只用來產生 2026-11-23 的初稿，現在的稿件已手動編修，不要再執行**（見下方說明） | `docs/manuscript_ch3_ch4_2026-11-23.docx` |
+| `python -m analysis.revise_manuscript_overfitting` | 2026-11-27 的修訂：直接修改手動編修過的論文稿 `.docx`（其餘內容逐位元組保留），加入 3.11「過度擬合的防範與檢驗」與 4.5「訓練動態與過度擬合的檢驗」（新的圖 3、表 5），後面的節號與表號順延，並調整數個段落的寫法；只能套用在尚未修訂的稿件，就地修訂時會先另存「（修訂前備份）」 | `docs/manuscript_ch3_ch4_2026-11-23.docx` |
 
-重新產生報告或論文稿時依表中的順序執行（論文稿只需要前兩項與最後兩項）。流程圖與報告預設輸出到 `docs/` 根目錄；2026-11-23 的版本已移到 `docs/2026-11-23/`。論文稿把 v1、v2 稱為 LoRA-S、LoRA-L，把批示（directive）稱為「調查處理紀錄」。圖表與流程圖用到 macOS 的字型（PingFang、Menlo）、Microsoft Office 內附的 Century Gothic 與 Google Chrome（把 SVG 轉成 PNG），只在 macOS 驗證過；`build_report` 與 `build_manuscript` 產生的檔案請用 Word 開啟檢查分頁與公式。
+重新產生報告時依表中的順序執行。論文稿在 2026-11-24 之後由作者在 Word 裡手動編修（拿掉【　】、部分引用與參考文獻），之後的修改都直接改 `.docx`（如 `revise_manuscript_overfitting`）；`build_manuscript` 的預設輸出路徑就是這份稿件，重新執行會蓋掉手動的修改。流程圖與報告預設輸出到 `docs/` 根目錄；2026-11-23 的版本已移到 `docs/2026-11-23/`。論文稿把 v1、v2 稱為 LoRA-S、LoRA-L，把批示（directive）稱為「調查處理紀錄」。圖表與流程圖用到 macOS 的字型（PingFang、Menlo）、Microsoft Office 內附的 Century Gothic 與 Google Chrome（把 SVG 轉成 PNG），只在 macOS 驗證過；`build_report` 與 `build_manuscript` 產生的檔案請用 Word 開啟檢查分頁與公式。
 
 ## 模型設定
 
@@ -420,3 +422,4 @@ python -m scripts.05_score_idt --adapter-dir models/idt_adapter_v2 --out-dir res
 - 2026-11-22：CUDA 載入模型改成每個權重先複製再搬上 GPU；在 GB10（vast.ai）上直接 `model.to("cuda")` 會卡住十分鐘以上，改後 17.5 GiB 只要 5 秒。模型權重（`*.pt`、`*.safetensors`）不再進版本庫。
 - 2026-11-23：05 的評估改成先合併同分（logit 相差不到 1e-4 的分數視為同分），並重算 v1、v2 的評估檔；新增 `analysis/`（配對比較、輸入欄位分析、圖表、流程圖與報告產生）；第二輪報告 `docs/experiment_report_2026-11-23.docx`，流程圖重畫並新增 ⑩⑪；第一輪的報告與流程圖移到 `docs/2026-10-18/`。
 - 2026-11-23：新增論文稿第 3、4 章 `docs/manuscript_ch3_ch4_2026-11-23.docx`（`analysis/manuscript_figures.py`、`analysis/build_manuscript.py`）；`analysis/idt_comparison.py` 補上各模型在驗證集門檻下的配對比較。
+- 2026-11-27：論文稿修訂（稿件已於 2026-11-24 手動編修，這次直接改 `.docx`）：新增 3.11「過度擬合的防範與檢驗」與 4.5「訓練動態與過度擬合的檢驗」、新的圖 3 與表 5，節號與表號順延，數個段落改為期刊論文的寫法（數字不變）；新增 `analysis/idt_overfitting.py`、`analysis/revise_manuscript_overfitting.py`，`analysis/manuscript_figures.py` 多輸出 `ms_fig3_overfitting.png`。

@@ -1,8 +1,9 @@
-"""期刊論文第 3、4 章的五張圖（論文用的命名：LoRA-S＝第一輪的 v1，LoRA-L＝第二輪的 v2）。
+"""期刊論文第 3、4 章的圖（論文用的命名：LoRA-S＝第一輪的 v1，LoRA-L＝第二輪的 v2）。
 
     ms_fig1_framework.png       研究架構
     ms_fig2_discrimination.png  測試集 AUROC 與 macro-F1 的 95% 信賴區間
-    ms_fig3_training.png        驗證損失與訓練損失（以累計更新步數對齊）
+    ms_fig3_training.png        驗證損失與訓練損失（以累計更新步數對齊；2026-11-23 初稿的圖 3）
+    ms_fig3_overfitting.png     同上，另加驗證集與測試集的 log-loss 並標出選定的 checkpoint（2026-11-27 修訂稿的圖 3）
     ms_fig4_gain.png            累積增益曲線
     ms_fig5_inputs.png          不同輸入來源的 AUROC
 
@@ -173,6 +174,62 @@ fig.subplots_adjust(left=0.085, right=0.955, top=0.885, bottom=0.175, wspace=0.0
 fig.savefig(OUT / "ms_fig3_training.png")
 plt.close(fig)
 
+# ---------------- 圖 3（2026-11-27 修訂稿）：訓練損失、驗證損失，加上驗證集與測試集的 log-loss ----------------
+# (a)(b) 是 03 記下的式 (2) 損失，共用縱軸；(c) 是 05 以標籤機率算的 log-loss（式 5），尺度不同，另用一個縱軸。
+# 選定的 checkpoint（驗證集 log-loss 最低）畫成深色外框的大圓點。
+configs = {row["key"]: row for row in data["configs"]}
+RUN_OF = {"LoRA-S": "v1", "LoRA-L": "v2"}
+chosen = {name: int(data["selected"][run]["config"].rsplit("-", 1)[1]) for name, run in RUN_OF.items()}
+LINE3 = {"linewidth": 1.8, "solid_capstyle": "round", "marker": "o", "markersize": 5.2, "markeredgecolor": "white", "markeredgewidth": 1.1, "zorder": 3}
+PICKED = {"marker": "o", "markersize": 7.4, "markeredgecolor": INK, "markeredgewidth": 1.3, "linestyle": "none", "zorder": 5}
+DASHED = (0, (3.2, 2.2))
+fig, axes = plt.subplots(1, 3, figsize=(5.27, 2.62), gridspec_kw={"width_ratios": [1, 1, 1.1]})
+for ax in axes:
+    style(ax)
+    ax.axhline(0, color=BASE, linewidth=0.9)
+    ax.set_xlim(-150, 2850)
+    ax.set_xticks([0, 1000, 2000])
+    ax.set_xticklabels(["0", "1,000", "2,000"])
+    ax.tick_params(labelsize=8.4)
+    ax.set_xlabel("累計更新步數", color=MUTED, fontsize=8.8)
+for ax, field, title in ((axes[0], "train_loss", "(a) 訓練損失"), (axes[1], "val_loss", "(b) 驗證損失")):
+    for name, color in (("LoRA-S", BLUE), ("LoRA-L", ORANGE)):
+        history = meta[name]["history"]
+        ax.plot([h["global_step"] for h in history], [h[field] for h in history], color=color, label=name, **LINE3)
+        if field == "val_loss":
+            picked = next(h for h in history if h["epoch"] == chosen[name])
+            ax.plot([picked["global_step"]], [picked["val_loss"]], color=color, **PICKED)
+    ax.set_ylim(0, 0.15)
+    ax.set_yticks([0, 0.05, 0.10, 0.15])
+    ax.set_yticklabels(["0.00", "0.05", "0.10", "0.15"] if ax is axes[0] else [])
+    ax.set_title(title, loc="left", fontsize=9.2, color=INK, pad=7)
+axes[0].legend(loc="upper right", frameon=False, fontsize=8, labelcolor=INK2, handlelength=1.4, borderaxespad=0.1)
+for name in ("LoRA-L", "LoRA-S"):  # 兩個選定的 checkpoint 共用一個標註
+    picked = next(h for h in meta[name]["history"] if h["epoch"] == chosen[name])
+    axes[1].annotate("選定的檢查點", (picked["global_step"], picked["val_loss"]), xytext=(1150, 0.034), textcoords="data", ha="center", va="top",
+                     fontsize=8, color=INK2, arrowprops={"arrowstyle": "-", "color": BASE, "linewidth": 0.8, "shrinkA": 1, "shrinkB": 5})
+ax = axes[2]
+for name, color in (("LoRA-S", BLUE), ("LoRA-L", ORANGE)):
+    history = meta[name]["history"]
+    steps = [h["global_step"] for h in history]
+    rows3 = [configs[f"{RUN_OF[name]}-epoch-{h['epoch']}"] for h in history]
+    ax.plot(steps, [r["test"]["log_loss"] for r in rows3], color=color, linewidth=1.4, linestyle=DASHED, marker="o", markersize=4.6, markerfacecolor="white", markeredgecolor=color, markeredgewidth=1.2, zorder=3)
+    ax.plot(steps, [r["val"]["log_loss"] for r in rows3], color=color, **LINE3)
+    picked = next(i for i, h in enumerate(history) if h["epoch"] == chosen[name])
+    ax.plot([steps[picked]], [rows3[picked]["val"]["log_loss"]], color=color, **PICKED)
+ax.plot([], [], color=INK2, label="驗證集", **LINE3)
+ax.plot([], [], color=INK2, linewidth=1.4, linestyle=DASHED, marker="o", markersize=4.6, markerfacecolor="white", markeredgecolor=INK2, markeredgewidth=1.2, label="測試集")
+ax.set_ylim(0, 0.45)
+ax.set_yticks([0, 0.15, 0.30, 0.45])
+ax.set_yticklabels(["0.00", "0.15", "0.30", "0.45"])
+ax.set_title("(c) log-loss", loc="left", fontsize=9.2, color=INK, pad=7)
+ax.legend(loc="lower right", frameon=False, fontsize=8, labelcolor=INK2, handlelength=2.1, borderaxespad=0.3)
+fig.subplots_adjust(left=0.078, right=0.975, top=0.895, bottom=0.185, wspace=0.3)
+position = axes[1].get_position()  # (a)(b) 共用縱軸：把 (b) 往左靠，與 (c) 之間留出縱軸刻度的位置
+axes[1].set_position([position.x0 - 0.05, position.y0, position.width, position.height])
+fig.savefig(OUT / "ms_fig3_overfitting.png")
+plt.close(fig)
+
 # ---------------- 圖 4：累積增益 ----------------
 curves = data["gain_curve"]
 fig, ax = plt.subplots(figsize=(5.27, 2.9))
@@ -230,5 +287,5 @@ fig.subplots_adjust(left=0.50, right=0.915, top=0.875, bottom=0.215)
 fig.savefig(OUT / "ms_fig5_inputs.png")
 plt.close(fig)
 
-for name in ("ms_fig1_framework", "ms_fig2_discrimination", "ms_fig3_training", "ms_fig4_gain", "ms_fig5_inputs"):
+for name in ("ms_fig1_framework", "ms_fig2_discrimination", "ms_fig3_training", "ms_fig3_overfitting", "ms_fig4_gain", "ms_fig5_inputs"):
     print(OUT / f"{name}.png")
